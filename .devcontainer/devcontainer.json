@@ -1,0 +1,20 @@
+{
+  "name": "fmlds-eval-workshop",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+  "postCreateCommand": "pip install --user -r requirements.txt litellm",
+  "forwardPorts": [8888],
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-toolsai.jupyter",
+        "ms-python.python"
+      ]
+    }
+  },
+  "remoteEnv": {
+    "WORKSHOP_MODE": "gateway"
+  }
+}

@@ -1,0 +1,509 @@
+transaction_id,date,raw_description,category,amount,account_type
+07a83941-cd47-5471-9e7b-b08a5985fcb7,2026-05-01,ACME CORP PAYROLL DEPOSIT,Income,5200.00,Checking
+1eecbbf3-2f09-5f58-980b-84fdb8d46fe9,2026-05-01,JR EAST SUICA RECHARGE,Transportation,-96.31,Credit Card
+aab44f22-29bc-5998-a06b-6b39878cb38c,2026-05-01,SAKURA HEIGHTS APT 4B RENT,Housing,-1450.00,Checking
+eb1ca870-8c0b-53ca-b510-fb6f6d453fc8,2026-05-01,TOHO CINEMAS SHINJUKU,Entertainment & Recreation,-13.42,Credit Card
+eea7bcd3-3e97-5e22-86e6-7e0d971d4123,2026-05-02,ATM WITHDRAWAL 4432,Financial Services,-52.21,Checking
+424be0aa-310b-5e5b-95d8-c055def6f0cb,2026-05-02,ROUND1 BOWLING,Entertainment & Recreation,-14.58,Credit Card
+fdf16462-2ae8-5643-b919-e694597ed826,2026-05-02,SAVINGS DEPOSIT BRANCH TELLER,Financial Services,2500.00,Savings
+8dd30c57-59c4-5feb-9c0c-731b4d26c58f,2026-05-02,STARBUCKS COFFEE KIOSK,Food & Dining,-7.31,Credit Card
+78d3387f-c612-5068-aabf-58b9a0d3e49d,2026-05-03,DOORDASH*GOODYBAG,Food & Dining,-31.56,Credit Card
+88f5dfd0-7c19-5622-bb74-f1acb711388c,2026-05-03,MCDONALD'S #1234,Food & Dining,-12.84,Credit Card
+5725b879-3f67-5667-8992-1285ef962988,2026-05-03,NETFLIX.COM 866-579,Entertainment & Recreation,-15.49,Checking
+614a794c-98db-5a8a-95bb-03992a931543,2026-05-03,SPOTIFY USA 4399,Entertainment & Recreation,-10.99,Checking
+17990631-eb88-55cd-bb1d-683da04ff436,2026-05-03,TOHO CINEMAS SHINJUKU,Entertainment & Recreation,-18.76,Credit Card
+defb9b61-2a69-5304-92da-ef9307f1cd6a,2026-05-04,SQ *TOKYO RAMEN YA,Food & Dining,-10.21,Credit Card
+6b09c04a-6d1e-5a8a-aec1-29926116bc33,2026-05-05,COMCAST*INTERNET,Utilities & Services,-59.99,Checking
+fb959713-6d9a-5d45-bc93-b5c086e05e80,2026-05-05,JR EAST SUICA RECHARGE,Transportation,-41.19,Credit Card
+0ce1b343-764b-5b0a-b75f-73057bb30529,2026-05-05,MCDONALD'S #1234,Food & Dining,-7.72,Credit Card
+6ed390ab-3e3c-5c84-8cf7-155e620500c9,2026-05-06,SQ *TOKYO RAMEN YA,Food & Dining,-13.81,Credit Card
+1373fc96-41c6-5a30-a094-a7e308c73e68,2026-05-06,TAXI GINZA 03-5555,Transportation,-33.55,Credit Card
+d2737a69-59cf-59c6-8b5e-6de1138353fd,2026-05-06,WHOLEFREDS MKT #104,Food & Dining,-74.29,Credit Card
+370deefe-edb9-504c-a76a-800cc868d072,2026-05-07,AT&T MOBILE 9025,Utilities & Services,-45.00,Checking
+a0c95763-7b44-514a-bfc6-710c93942e1b,2026-05-07,ATM WITHDRAWAL 4432,Financial Services,-27.55,Checking
+7c9404c8-2f13-5583-b2c5-fe0d95642422,2026-05-07,IKEA #0042,Shopping & Retail,-48.69,Credit Card
+e962b204-eb25-5864-81f8-fcd18d899578,2026-05-07,SQ *TOKYO RAMEN YA,Food & Dining,-17.52,Credit Card
+e64d534d-93ca-5e74-87a0-7603b23823e6,2026-05-08,ATM WITHDRAWAL 4432,Financial Services,-82.77,Checking
+75a7446d-d100-5827-a9ad-70eeb67dc4c4,2026-05-08,DOORDASH*GOODYBAG,Food & Dining,-28.48,Credit Card
+3e4feb2c-d537-522c-aa76-26ac949f87ee,2026-05-08,STARBUCKS #1042,Food & Dining,-6.79,Credit Card
+b4e58930-56b7-536d-8207-23913811b3d5,2026-05-08,TARG*T 00432,Shopping & Retail,-19.05,Credit Card
+02b3d314-b501-5149-b702-e1bf0336a74e,2026-05-08,WHOLEFREDS MKT #104,Food & Dining,-77.96,Credit Card
+ea751c4d-680d-50ea-930f-b9add4fe9041,2026-05-09,SHELL OIL 4432,Transportation,-73.70,Credit Card
+e42bff9b-75d0-568a-8be4-a9b76679a22f,2026-05-09,TAXI GINZA 03-5555,Transportation,-39.13,Credit Card
+e213668b-6344-544d-bd30-86c430fa277a,2026-05-09,WALGREENS #04421,Healthcare & Medical,-39.44,Credit Card
+ffa15f8a-36a2-53e2-9ccd-aba4b8bbcc84,2026-05-10,UBER TRIP,Transportation,-21.04,Credit Card
+0731f393-dda8-5f88-a8fd-52c96c37aac6,2026-05-12,ATM WITHDRAWAL 4432,Financial Services,-53.89,Checking
+f68b3226-ce75-5bc5-b8d0-8e637af5c590,2026-05-12,STARBUCKS COFFEE KIOSK,Food & Dining,-8.24,Credit Card
+e3d3517b-74c3-5525-a294-581c7ccac064,2026-05-12,TOKYO ELECTRIC POWER,Utilities & Services,-104.61,Checking
+72226eed-c7ee-5fab-a63a-3b5c78bfdc43,2026-05-13,SHELL OIL 4432,Transportation,-46.29,Credit Card
+90a2164d-bb75-5af3-8d40-602aa6271d89,2026-05-13,SQ *TOKYO RAMEN YA,Food & Dining,-12.48,Credit Card
+bab28a16-1076-56f1-b841-f442d89e1315,2026-05-13,STARBUCKS COFFEE KIOSK,Food & Dining,-5.39,Credit Card
+270308fb-b4a0-5b41-a14f-6a11c7dde596,2026-05-14,NIPPON GAS URBAN,Utilities & Services,-26.74,Checking
+982063d0-2403-56dd-8bc8-de5f5d97da3a,2026-05-15,ROUND1 BOWLING,Entertainment & Recreation,-12.42,Credit Card
+7791a9ba-419a-5b20-bb17-ceb0213ec9b8,2026-05-16,TARG*T 00432,Shopping & Retail,-16.36,Credit Card
+de40f285-4b34-5d01-88dd-d2ed5d0f4b97,2026-05-17,AMZN MKTP US*2X9Y4D,Shopping & Retail,-82.92,Credit Card
+25c31a9a-8b8d-58a9-aa27-ccd2b7b68605,2026-05-17,TARG*T 00432,Shopping & Retail,-76.07,Credit Card
+4c485213-5821-55eb-be88-a9783297ef68,2026-05-17,UBER *TRIP HELP.UBER.CO,Transportation,-18.86,Credit Card
+7f7a458f-4f3e-5c2b-802e-c7cb7e126f35,2026-05-18,AMZN MKTP US*2X9Y4D,Shopping & Retail,-86.23,Credit Card
+5c4070a9-f43c-5727-a406-914801e9460b,2026-05-18,KONBINI 7-ELEVEN #221,Food & Dining,-4.87,Credit Card
+c7c3e3e7-729e-5b0d-a26f-909a8a3ec321,2026-05-18,ROUND1 BOWLING,Entertainment & Recreation,-14.60,Credit Card
+c6ddcf62-d0e7-5955-a4f2-3c4e182af11f,2026-05-18,STARBUCKS #1042,Food & Dining,-4.30,Credit Card
+8a3e19ec-e595-5cc8-808d-5e793c760776,2026-05-18,WALGREENS #04421,Healthcare & Medical,-14.22,Credit Card
+6349ce74-2287-5fd5-aa07-9e39c24e192b,2026-05-19,SQ *TOKYO RAMEN YA,Food & Dining,-11.50,Credit Card
+22c4172b-45f0-55ab-90a9-94811e4fac2c,2026-05-20,DONATION WWF JAPAN,Charity & Donations,-29.77,Checking
+b13984ed-f85a-545e-939b-b931674aa124,2026-05-20,JR EAST SUICA RECHARGE,Transportation,-25.08,Credit Card
+816c0432-ac5d-5098-b218-171368b09279,2026-05-20,JR EAST SUICA RECHARGE,Transportation,-99.69,Credit Card
+e024ac6e-6045-5668-9bbe-602eff68ee86,2026-05-20,STARBUCKS COFFEE KIOSK,Food & Dining,-7.17,Credit Card
+87421177-52d8-5207-98f5-59deb1805c04,2026-05-21,ROUND1 BOWLING,Entertainment & Recreation,-17.47,Credit Card
+dc27e9c1-1e9e-53bf-8037-dcff90403ed4,2026-05-22,UBER TRIP,Transportation,-29.62,Credit Card
+e5427555-2a51-5fdb-a949-b138557f4caa,2026-05-22,WHOLEFREDS MKT #104,Food & Dining,-57.69,Credit Card
+18965f03-160b-5da0-9518-df238c9034a1,2026-05-22,WHOLEFREDS MKT #104,Food & Dining,-62.56,Credit Card
+66674f03-d43e-5238-a5a2-35e3f0aff8f4,2026-05-23,STARBUCKS STORE 08412,Food & Dining,-4.48,Credit Card
+8995d5b1-d5f3-5015-bf68-74cc760760d2,2026-05-23,TOHO CINEMAS SHINJUKU,Entertainment & Recreation,-18.23,Credit Card
+435e9433-8261-5cd5-99b9-a2c524318a3b,2026-05-24,LYFT RIDE 0421,Transportation,-24.20,Credit Card
+7cbc4dae-92d7-5f0a-a330-52cb20edca5c,2026-05-24,UBER *TRIP HELP.UBER.CO,Transportation,-20.35,Credit Card
+1776a4e1-0ef4-535a-96c8-4d92f6289c9a,2026-05-25,IKEA #0042,Shopping & Retail,-44.49,Credit Card
+c045dae5-4d41-56e1-9107-77ecbb8129ab,2026-05-25,LYFT RIDE 0421,Transportation,-25.67,Credit Card
+a377005f-164b-5784-8216-4d72f3cac1b9,2026-05-25,ROUND1 BOWLING,Entertainment & Recreation,-24.60,Credit Card
+58509be2-f6c9-568f-ae45-4533641e55b3,2026-05-26,MCDONALD'S #1234,Food & Dining,-12.95,Credit Card
+f549d803-d690-5410-aa63-50ea56e8b38b,2026-05-26,MCDONALD'S #1234,Food & Dining,-6.35,Credit Card
+ec7f998e-1af0-5d0c-8769-e8fd8e580875,2026-05-27,TARG*T 00432,Shopping & Retail,-59.73,Credit Card
+5258fe00-421a-508f-8901-a408ecc078ba,2026-05-27,UNIQLO 0214,Shopping & Retail,-26.92,Credit Card
+c9f065d6-d27f-5f5f-aa7c-1992afd56e7f,2026-05-28,ATM WITHDRAWAL 4432,Financial Services,-78.33,Checking
+b74bf988-ec6b-5fee-aa6a-594a16e30fe6,2026-05-28,DENTAL OFFICE TAMURA,Healthcare & Medical,-140.00,Credit Card
+a1de3d8e-5db2-5a94-a5cc-7c792a12c204,2026-05-28,SAVINGS INTEREST PAID,Financial Services,5.88,Savings
+131d4517-2b5e-520b-9a56-08ddbab04b18,2026-05-28,UBER TRIP,Transportation,-11.29,Credit Card
+07437443-e003-53c9-a956-ec3247fb838c,2026-05-28,WALGREENS #04421,Healthcare & Medical,-23.53,Credit Card
+4b752657-ebfc-5822-8cfc-f2a8669c1b49,2026-05-29,DOORDASH*GOODYBAG,Food & Dining,-42.44,Credit Card
+7c2efb07-522e-5a49-8d8b-4635d1f0c7c2,2026-05-29,TARG*T 00432,Shopping & Retail,-83.97,Credit Card
+f800de84-aee1-5e78-a97d-031907e0fb34,2026-05-29,TAXI GINZA 03-5555,Transportation,-25.65,Credit Card
+76c511d8-fe01-546f-83ab-da302e1b8ca7,2026-05-30,BANK WIRE FEE,Financial Services,-15.00,Checking
+c0d9c79f-8bfc-55cf-9941-ba6731afc53c,2026-05-30,IKEA #0042,Shopping & Retail,-25.09,Credit Card
+e4551135-3e7b-59fe-8dc6-1f7881d8675a,2026-05-30,MCDONALD'S #1234,Food & Dining,-11.12,Credit Card
+60a0e3b2-ce96-5a86-8399-f55baa3e8706,2026-05-30,WHOLEFREDS MKT #104,Food & Dining,-115.15,Credit Card
+f212b92f-d4e4-5c46-a8e1-7f65d6ca912d,2026-05-31,IKEA #0042,Shopping & Retail,-37.21,Credit Card
+e01ee50d-c03e-5be4-81a5-728d42973d08,2026-05-31,UNIQLO 0214,Shopping & Retail,-74.98,Credit Card
+3a0a50de-9835-59fd-956c-0ba113e6b5c0,2026-05-31,UNIQLO 0214,Shopping & Retail,-41.18,Credit Card
+00ad711b-9fab-5c94-8d5e-f0828498ca85,2026-06-01,ACME CORP PAYROLL DEPOSIT,Income,5200.00,Checking
+52514d40-1d9a-55a0-a9a0-5cafa2020b41,2026-06-01,ATM WITHDRAWAL 4432,Financial Services,-61.59,Checking
+7c39f61b-5432-5843-a86d-3d52119a6448,2026-06-01,SAKURA HEIGHTS APT 4B RENT,Housing,-1450.00,Checking
+7063acbc-ddf2-5b28-bbd6-db1b68216d04,2026-06-01,STARBUCKS COFFEE KIOSK,Food & Dining,-6.29,Credit Card
+4b3127d3-7b95-5d76-8343-5de830c1227c,2026-06-02,CVS/PHARMACY #771,Healthcare & Medical,-9.69,Credit Card
+0b0171e4-4c5a-55e6-a595-1b8eb7be0ea6,2026-06-02,LYFT RIDE 0421,Transportation,-9.09,Credit Card
+6acca068-264e-5ed8-a5bf-28bac27fabbb,2026-06-02,STARBUCKS COFFEE KIOSK,Food & Dining,-7.26,Credit Card
+5f8100e8-de9b-5b0f-a099-84004240300c,2026-06-02,STARBUCKS STORE 08412,Food & Dining,-6.36,Credit Card
+3d50583f-3b89-5e8e-b5f4-7b96d37fca6d,2026-06-02,WHOLEFREDS MKT #104,Food & Dining,-84.23,Credit Card
+c251d487-367c-5083-a668-db837a43e5fd,2026-06-03,NETFLIX.COM 866-579,Entertainment & Recreation,-15.49,Checking
+1379e4ca-6857-5185-901b-f485b05c4d3c,2026-06-03,SPOTIFY USA 4399,Entertainment & Recreation,-10.99,Checking
+f17b71df-0a3d-5e2e-ba05-7b7bef9561be,2026-06-03,STARBUCKS #1042,Food & Dining,-7.21,Credit Card
+0dc98e29-3099-5fe1-a8c9-5d1ebbac0573,2026-06-03,STARBUCKS COFFEE KIOSK,Food & Dining,-6.69,Credit Card
+ae16bc1a-1897-5e97-a6d9-2f579f3f63e7,2026-06-03,UBER TRIP,Transportation,-27.03,Credit Card
+301c2626-ceba-5fe3-9b1a-538026538932,2026-06-03,UBER TRIP,Transportation,-36.35,Credit Card
+e6c7cd96-c6a0-515a-af7d-669b9e417214,2026-06-04,DOORDASH*GOODYBAG,Food & Dining,-43.25,Credit Card
+3c6fe229-bd60-53b3-b429-903759e3f032,2026-06-05,COMCAST*INTERNET,Utilities & Services,-59.99,Checking
+d298874e-06ac-5f77-a63d-e00df1b53799,2026-06-05,IKEA #0042,Shopping & Retail,-91.62,Credit Card
+56f23881-b00b-53ba-9557-290fc3199897,2026-06-05,KONBINI 7-ELEVEN #221,Food & Dining,-5.85,Credit Card
+022ebd89-e62a-5a51-ba42-e0ea13c3a01a,2026-06-05,MCDONALD'S #1234,Food & Dining,-13.47,Credit Card
+26420c59-29ad-5ff7-843c-9cfc91aeb045,2026-06-05,SHELL OIL 4432,Transportation,-42.26,Credit Card
+36c6895b-9885-5663-8b9d-4271e111eab1,2026-06-06,MCDONALD'S #1234,Food & Dining,-9.51,Credit Card
+0e39e34b-7fb7-5fb3-94d2-77873a3670f7,2026-06-06,STARBUCKS #1042,Food & Dining,-5.02,Credit Card
+c942668f-91cd-527e-a3a2-a95774024811,2026-06-06,WHOLEFREDS MKT #104,Food & Dining,-69.55,Credit Card
+c2007bc9-f71f-51b6-897d-6e3ab1411529,2026-06-07,AT&T MOBILE 9025,Utilities & Services,-45.00,Checking
+9ce93fbf-ac4b-58ec-98b9-93e6bb3480a0,2026-06-07,KONBINI 7-ELEVEN #221,Food & Dining,-15.97,Credit Card
+f5234c11-e1e9-5f97-b1ef-319d3f430c29,2026-06-07,SHELL OIL 4432,Transportation,-62.29,Credit Card
+9af5f8f9-a2c3-5585-9f5b-55001ed02aa6,2026-06-08,SQ *TOKYO RAMEN YA,Food & Dining,-12.45,Credit Card
+18d7fa65-847a-52b9-8790-814ca03de0e8,2026-06-08,TOHO CINEMAS SHINJUKU,Entertainment & Recreation,-12.47,Credit Card
+0f60e5ad-0b16-5aab-958a-4c9c0b24ba4d,2026-06-08,UNIQLO 0214,Shopping & Retail,-39.96,Credit Card
+30c2532e-36a1-50a4-be8e-4580ddbe2639,2026-06-09,AMZN MKTP US*2X9Y4D,Shopping & Retail,-21.90,Credit Card
+b694ef62-e621-5048-b4e5-4f71dd1887bc,2026-06-09,ATM WITHDRAWAL 4432,Financial Services,-23.55,Checking
+81dc8690-278c-56c9-9ede-dc9d8b707f78,2026-06-09,DOORDASH*GOODYBAG,Food & Dining,-42.80,Credit Card
+1dfa96fc-e263-5be0-883c-8b1c256f023f,2026-06-10,AMZN Mktp US*1A2B3C,Shopping & Retail,-58.68,Credit Card
+94162846-3532-5bb5-afc9-54ff03602546,2026-06-10,KONBINI 7-ELEVEN #221,Food & Dining,-9.35,Credit Card
+6f912cd8-1b73-506d-82ca-417f75ffa0b4,2026-06-10,RED CROSS DONATION,Charity & Donations,-50.00,Checking
+08ad20b8-acc1-568a-915a-333286d2c9aa,2026-06-10,SHELL OIL 4432,Transportation,-71.93,Credit Card
+483fa8a1-3abf-5a8a-88a1-d731746a2b4c,2026-06-11,KONBINI 7-ELEVEN #221,Food & Dining,-16.94,Credit Card
+b8a09227-87d7-5ce8-a966-550ecc1c4391,2026-06-11,ROUND1 BOWLING,Entertainment & Recreation,-28.78,Credit Card
+0a63236f-8c54-5831-8ec8-939560af0cc7,2026-06-12,ATM WITHDRAWAL 4432,Financial Services,-54.50,Checking
+89cbedaf-afa5-5257-a04d-7c6694b37b0b,2026-06-12,CVS/PHARMACY #771,Healthcare & Medical,-30.77,Credit Card
+414c4986-a412-5377-9b5e-1db09d8e1552,2026-06-12,STEAM GAMES PURCHASE,Entertainment & Recreation,-25.26,Credit Card
+df50b986-197a-5e6e-b987-88805ccb7df7,2026-06-12,TOKYO ELECTRIC POWER,Utilities & Services,-73.93,Checking
+73a1973b-69e3-5258-b95d-530c6d07f4f1,2026-06-13,AMZN Mktp US*1A2B3C,Shopping & Retail,-123.64,Credit Card
+01ab6a5d-3fb3-5993-9a08-b858a90717c1,2026-06-13,ATM WITHDRAWAL 4432,Financial Services,-91.96,Checking
+c9b39b2e-4a89-5752-9b61-6a4222ab89c4,2026-06-13,TOHO CINEMAS SHINJUKU,Entertainment & Recreation,-18.57,Credit Card
+a6222ea9-d396-5033-be79-5f85b71734e8,2026-06-14,CVS/PHARMACY #771,Healthcare & Medical,-26.61,Credit Card
+c03db241-b626-55c9-9329-acf0b04277dd,2026-06-14,NIPPON GAS URBAN,Utilities & Services,-30.00,Checking
+519af17f-b1b9-5013-a9f1-d2709c786857,2026-06-14,STARBUCKS COFFEE KIOSK,Food & Dining,-7.29,Credit Card
+326a76b6-6101-5534-afa7-8c315c23c4cc,2026-06-14,TAXI GINZA 03-5555,Transportation,-26.39,Credit Card
+d1fa3939-b2db-5fb7-bcdb-87854494e2fc,2026-06-15,FREELANCE INVOICE #1187 - DESIGN,Income,650.00,Checking
+42dbf946-2d38-5914-8a51-d01de327897f,2026-06-17,LYFT RIDE 0421,Transportation,-21.70,Credit Card
+5061132e-6a4f-57fa-99ec-49d30eaefc06,2026-06-17,ROUND1 BOWLING,Entertainment & Recreation,-17.99,Credit Card
+1b07e123-c177-5fa8-bc8b-3ebbff822b49,2026-06-17,TAXI GINZA 03-5555,Transportation,-9.24,Credit Card
+1af960b6-8a2a-577e-b3e4-144d0611b6ef,2026-06-19,STARBUCKS #1042,Food & Dining,-5.41,Credit Card
+ac103ae2-4a2a-5d4f-b8c6-6d683d8be30e,2026-06-19,TOHO CINEMAS SHINJUKU,Entertainment & Recreation,-31.25,Credit Card
+c59616c8-f39e-5bb3-a942-aa1ea34d27e6,2026-06-19,WHOLEFREDS MKT #104,Food & Dining,-85.53,Credit Card
+47d51d14-2c9f-5600-9ec5-ecfb768b4e55,2026-06-20,ATM WITHDRAWAL 4432,Financial Services,-45.11,Checking
+50aac761-d253-5be3-969a-1fe058ffcd35,2026-06-20,DONATION WWF JAPAN,Charity & Donations,-47.31,Checking
+2384bf4b-9e40-5849-96ee-1d230d7ddc0f,2026-06-21,UBER *TRIP HELP.UBER.CO,Transportation,-29.56,Credit Card
+6189b8be-9424-58d3-b25a-2610c74a89ed,2026-06-22,AMZN MKTP US*2X9Y4D,Shopping & Retail,-17.33,Credit Card
+f74a0cb5-0cfa-5c98-9663-20d3324a9220,2026-06-22,STARBUCKS COFFEE KIOSK,Food & Dining,-8.31,Credit Card
+4601bb7d-98fa-588f-8f1c-50932db8f071,2026-06-22,STARBUCKS STORE 08412,Food & Dining,-5.26,Credit Card
+ece3cb58-a986-52f3-bfa9-ebe088993307,2026-06-22,UBER *TRIP HELP.UBER.CO,Transportation,-21.95,Credit Card
+253c8679-48d3-5c58-b2e8-693ed45d2b94,2026-06-23,SHELL OIL 4432,Transportation,-43.61,Credit Card
+9b605658-f936-5f66-b729-5aeb576f420b,2026-06-24,AMZN MKTP US*2X9Y4D,Shopping & Retail,-83.88,Credit Card
+90ef86a2-b5ee-58bd-973e-dd8528fb7a24,2026-06-24,IKEA #0042,Shopping & Retail,-48.96,Credit Card
+a7dc6711-d53e-5114-81a9-11ff1e2da81e,2026-06-24,STARBUCKS #1042,Food & Dining,-4.75,Credit Card
+ad7aaa01-e989-5598-b6a8-851eee67c114,2026-06-24,UBER *TRIP HELP.UBER.CO,Transportation,-17.72,Credit Card
+a9dc98ee-5683-57b9-9496-de9ae90101b0,2026-06-25,TOHO CINEMAS SHINJUKU,Entertainment & Recreation,-17.58,Credit Card
+148e63b6-2f7c-505f-adff-8b44cbc6b179,2026-06-26,UNIQLO 0214,Shopping & Retail,-86.99,Credit Card
+3ab3a672-ed37-50cc-adc1-5b12b3228c23,2026-06-27,AMZN Mktp US*1A2B3C,Shopping & Retail,-59.26,Credit Card
+b82b12ed-fd81-5c06-9e45-0468013096c1,2026-06-28,AMZN MKTP US*2X9Y4D,Shopping & Retail,-22.16,Credit Card
+a4db7211-17c9-543a-b6e7-49d28e9be837,2026-06-28,SAVINGS INTEREST PAID,Financial Services,4.23,Savings
+645b5ed7-5b2b-5e39-b6aa-67c84895563a,2026-06-28,STARBUCKS COFFEE KIOSK,Food & Dining,-4.93,Credit Card
+d403d21c-5559-57a8-ae81-54a67721c2b4,2026-06-29,AMZN MKTP US*2X9Y4D,Shopping & Retail,-42.40,Credit Card
+a09ae16d-018b-508a-af08-82a7caf61e81,2026-06-29,AMZN Mktp US*1A2B3C,Shopping & Retail,-57.80,Credit Card
+c3f649f5-cd98-5705-ab67-18eaf5a7955d,2026-06-29,IKEA #0042,Shopping & Retail,-160.58,Credit Card
+3f6af4b3-54d3-511b-a077-10e27a10beb7,2026-06-29,STARBUCKS COFFEE KIOSK,Food & Dining,-5.22,Credit Card
+4ef90451-05df-5709-a383-40306cce2121,2026-06-29,TAXI GINZA 03-5555,Transportation,-13.62,Credit Card
+4e55e32f-8fd2-5655-ab61-096f92cd0b50,2026-06-29,TOHO CINEMAS SHINJUKU,Entertainment & Recreation,-31.41,Credit Card
+377c9e09-3cd1-5755-a691-83a36e7699ba,2026-06-29,UBER TRIP,Transportation,-12.03,Credit Card
+c8ab57cb-acf1-590b-989a-37ce77c36cd9,2026-06-29,UBER TRIP,Transportation,-11.21,Credit Card
+60620fd2-361b-5099-80d2-6215ef8bf5da,2026-06-30,SQ *TOKYO RAMEN YA,Food & Dining,-12.39,Credit Card
+e1632015-bbdc-5cc6-82c6-0beaed25fdd4,2026-07-01,ACME CORP PAYROLL DEPOSIT,Income,5200.00,Checking
+b801d35c-0dc4-5e25-8f93-0dcbda604620,2026-07-01,ATM WITHDRAWAL 4432,Financial Services,-87.97,Checking
+426540d0-6e63-5392-ba32-5a4d41f8d056,2026-07-01,ROUND1 BOWLING,Entertainment & Recreation,-28.58,Credit Card
+8c997969-31f1-57a4-898f-0800000d171c,2026-07-01,SAKURA HEIGHTS APT 4B RENT,Housing,-1450.00,Checking
+e3f46ab5-8bc8-5af7-a27f-10b09f4d3913,2026-07-01,UNIQLO 0214,Shopping & Retail,-94.90,Credit Card
+b9482d8a-090e-5b97-ac5f-aec9063ae252,2026-07-02,JR EAST SUICA RECHARGE,Transportation,-36.55,Credit Card
+f1bb55e3-e5ba-5357-b812-a31e57707704,2026-07-02,KONBINI 7-ELEVEN #221,Food & Dining,-11.36,Credit Card
+8d20df1d-f066-5d35-855a-d7e6d4558614,2026-07-03,AMZN Mktp US*1A2B3C,Shopping & Retail,-94.27,Credit Card
+f0ba5130-32a5-57b9-bd5a-66668c456095,2026-07-03,ATM WITHDRAWAL 4432,Financial Services,-60.48,Checking
+cc64cb3a-f373-5362-b028-b3d0183fa019,2026-07-03,JR EAST SUICA RECHARGE,Transportation,-77.08,Credit Card
+b9785944-4525-5754-bd2c-9542e6be1748,2026-07-03,NETFLIX.COM 866-579,Entertainment & Recreation,-15.49,Checking
+32af4f9e-1a4f-5a0a-bec3-a697d1fd2b7d,2026-07-03,SHELL OIL 4432,Transportation,-36.23,Credit Card
+7b8700a2-ba28-5700-a9d6-071058ce4702,2026-07-03,SPOTIFY USA 4399,Entertainment & Recreation,-10.99,Checking
+47212da1-cbe2-51e2-8ad4-59c222e27ef5,2026-07-03,SQ *TOKYO RAMEN YA,Food & Dining,-19.64,Credit Card
+53ca6aff-cc0a-5ab1-997b-769df60a566d,2026-07-03,WALGREENS #04421,Healthcare & Medical,-35.83,Credit Card
+6f2f0404-27fe-5435-9b22-3eb74d2833e4,2026-07-04,WALGREENS #04421,Healthcare & Medical,-40.77,Credit Card
+f94d6ddd-a0a4-56e5-9825-acc56bd47317,2026-07-05,BROKERAGE DIVIDEND VTI,Income,18.76,Checking
+4ce55201-bbe0-5bf8-a934-76956a05b0a5,2026-07-05,COMCAST*INTERNET,Utilities & Services,-59.99,Checking
+98585c74-b3a4-5098-a454-d1fc36f0512b,2026-07-05,ROUND1 BOWLING,Entertainment & Recreation,-14.77,Credit Card
+bbd69e31-e521-596b-ae85-8abdd7883f44,2026-07-05,WHOLEFREDS MKT #104,Food & Dining,-37.08,Credit Card
+a3673e31-f2e7-5bee-afd6-92a9a22ad241,2026-07-06,STEAM GAMES PURCHASE,Entertainment & Recreation,-40.29,Credit Card
+9bbf582c-0ec1-5157-ba09-6eca0ef22581,2026-07-07,AT&T MOBILE 9025,Utilities & Services,-45.00,Checking
+21cd800e-d217-53e3-a52f-b0cc31d00fbc,2026-07-07,TAXI GINZA 03-5555,Transportation,-10.99,Credit Card
+4bc27e00-a5c3-590f-9142-76247da2370e,2026-07-07,TOHO CINEMAS SHINJUKU,Entertainment & Recreation,-28.78,Credit Card
+95237947-c33c-5405-a73e-de1061156b60,2026-07-09,AMZN Mktp US*1A2B3C,Shopping & Retail,-60.53,Credit Card
+ac4c5148-6400-5fe2-b911-12b6ca15686e,2026-07-09,UBER *TRIP HELP.UBER.CO,Transportation,-15.39,Credit Card
+f05774fc-5ebb-5dcd-a712-624b648d06b4,2026-07-09,UNIQLO 0214,Shopping & Retail,-95.20,Credit Card
+3e64c0de-1e96-5968-b0c5-e8bad8a23ab2,2026-07-09,UNIQLO 0214,Shopping & Retail,-103.49,Credit Card
+fe9f712f-c159-5cf7-ba18-1a3aa8d71e7c,2026-07-10,LYFT RIDE 0421,Transportation,-28.59,Credit Card
+8412b3ee-7173-51fd-bb78-88ef396aefbc,2026-07-10,MCDONALD'S #1234,Food & Dining,-7.68,Credit Card
+f5d89c1f-5b68-50b0-8d90-7ce4f7673f70,2026-07-11,JR EAST SUICA RECHARGE,Transportation,-63.41,Credit Card
+8d4f32fb-1b0c-5223-8850-92e31651c639,2026-07-12,ATM WITHDRAWAL 4432,Financial Services,-62.62,Checking
+c475742f-a23a-5b26-aaef-6c5f0a1affda,2026-07-12,TOKYO ELECTRIC POWER,Utilities & Services,-74.78,Checking
+d6d64722-90d1-5061-ad71-527be02e94f3,2026-07-13,CVS/PHARMACY #771,Healthcare & Medical,-38.01,Credit Card
+80b0352f-3669-592d-b420-54bf2aa9ff61,2026-07-13,JR EAST SUICA RECHARGE,Transportation,-92.39,Credit Card
+0a0b0991-5bfb-5147-bb5d-08cba5f9ca85,2026-07-13,KONBINI 7-ELEVEN #221,Food & Dining,-6.66,Credit Card
+d5bae854-1b99-5bed-a489-35bd01018b18,2026-07-13,SHELL OIL 4432,Transportation,-51.46,Credit Card
+8ba36db9-486a-5b34-bb09-ebdfc6b4f920,2026-07-13,UBER *TRIP HELP.UBER.CO,Transportation,-23.27,Credit Card
+449a3bb6-22a9-5d03-9fe8-8a3594a32dac,2026-07-14,NIPPON GAS URBAN,Utilities & Services,-27.55,Checking
+daee9870-2408-5975-8505-d3406d441956,2026-07-15,AMZN MKTP US*2X9Y4D,Shopping & Retail,-35.47,Credit Card
+7186c4ed-5d43-5b3a-b004-3a9042556d8c,2026-07-15,KONBINI 7-ELEVEN #221,Food & Dining,-6.89,Credit Card
+c9c44783-7d4e-5354-a143-e49492624dfb,2026-07-15,SQ *TOKYO RAMEN YA,Food & Dining,-14.74,Credit Card
+12acb68d-3f2d-5b3c-8256-a83a4cd5ebde,2026-07-15,STARBUCKS COFFEE KIOSK,Food & Dining,-6.07,Credit Card
+3dcbadd6-dc51-52ec-8a46-56b224aa6dc7,2026-07-15,STARBUCKS COFFEE KIOSK,Food & Dining,-4.67,Credit Card
+f39b3c83-6ae9-5c4b-b2ec-a9f2b704b588,2026-07-15,TOHO CINEMAS SHINJUKU,Entertainment & Recreation,-25.99,Credit Card
+1e78dfbd-3324-5887-bc56-9791bdb03c19,2026-07-16,JR EAST SUICA RECHARGE,Transportation,-22.32,Credit Card
+28344cc4-5629-59ce-8195-6a45c8f1721f,2026-07-16,UBER *TRIP HELP.UBER.CO,Transportation,-12.83,Credit Card
+bf369368-bf5f-5f81-823c-236b9739828b,2026-07-16,WHOLEFREDS MKT #104,Food & Dining,-86.96,Credit Card
+fcd33dcd-6d8f-56ff-8ae7-b23a38dddd9e,2026-07-17,WHOLEFREDS MKT #104,Food & Dining,-75.22,Credit Card
+a06998be-5fa5-524e-80f8-078a2049d197,2026-07-18,DOORDASH*GOODYBAG,Food & Dining,-40.01,Credit Card
+473dd00c-52e0-5b11-87ff-57f3b5f8dd76,2026-07-18,IKEA #0042,Shopping & Retail,-29.18,Credit Card
+4c867712-2dcc-5d16-a217-f0a0a6a22026,2026-07-18,JR EAST SUICA RECHARGE,Transportation,-79.80,Credit Card
+b898b7ae-9d1a-5277-bf32-f5766b45e1f6,2026-07-19,UNIQLO 0214,Shopping & Retail,-76.44,Credit Card
+1a7de6be-d1b3-582b-952c-25335f55632c,2026-07-20,DONATION WWF JAPAN,Charity & Donations,-29.72,Checking
+3b770f58-2c22-5e1e-97ee-7ab5da9e244b,2026-07-20,KONBINI 7-ELEVEN #221,Food & Dining,-15.23,Credit Card
+4ed992a1-2500-5cab-b6b2-0fc3a0af1bc6,2026-07-20,STARBUCKS STORE 08412,Food & Dining,-4.99,Credit Card
+a4195f46-71c2-5917-8524-db2140f48bce,2026-07-21,KONBINI 7-ELEVEN #221,Food & Dining,-6.59,Credit Card
+277b8ea1-6008-59ea-bf07-72eca05f03db,2026-07-21,TAX REFUND - INTERNAL REVENUE,Income,418.50,Checking
+546b7600-34df-55a9-9ea2-74833ac4d423,2026-07-22,KONBINI 7-ELEVEN #221,Food & Dining,-10.97,Credit Card
+d5ed0092-0495-5fe3-9470-c41d48718bd1,2026-07-22,LYFT RIDE 0421,Transportation,-26.66,Credit Card
+c99c81ad-d603-5d69-b62e-62eb075b85d6,2026-07-22,STARBUCKS STORE 08412,Food & Dining,-3.30,Credit Card
+a95c9f84-79b8-5733-9a8e-574ba4a42dc2,2026-07-22,STEAM GAMES PURCHASE,Entertainment & Recreation,-15.72,Credit Card
+ef37a82a-9c66-57e3-bfb1-b22d19d73ddb,2026-07-22,WHOLEFREDS MKT #104,Food & Dining,-61.39,Credit Card
+f0a66ba2-5fc8-5f83-84bd-d9e2c4d51bae,2026-07-23,ROUND1 BOWLING,Entertainment & Recreation,-12.29,Credit Card
+508cc59d-d614-542e-9d92-e854fedcba10,2026-07-23,WHOLEFREDS MKT #104,Food & Dining,-94.19,Credit Card
+13c5afaa-7cf1-543c-b93a-e8bab5d42e18,2026-07-24,UNIQLO 0214,Shopping & Retail,-36.50,Credit Card
+9a63ce84-a19e-5e6e-9500-ef598078eb7e,2026-07-25,AMZN Mktp US*1A2B3C,Shopping & Retail,-134.53,Credit Card
+c91cee8e-0fab-5980-bfb5-ab47903b9425,2026-07-25,AMZN Mktp US*1A2B3C,Shopping & Retail,-15.97,Credit Card
+ad054b88-81b1-5a40-9c17-793668d26c18,2026-07-25,STARBUCKS COFFEE KIOSK,Food & Dining,-6.13,Credit Card
+7e625798-ac67-5130-bf4b-b1a19cfcc7be,2026-07-26,ATM WITHDRAWAL 4432,Financial Services,-98.71,Checking
+d604682f-5fcd-5d20-8ac9-41de5cebafcd,2026-07-26,SHELL OIL 4432,Transportation,-57.15,Credit Card
+eecc10a3-8d6c-53f1-b820-9f6c973ab929,2026-07-26,STARBUCKS STORE 08412,Food & Dining,-6.35,Credit Card
+123b9873-af23-5f08-b2e1-35027b7f5b51,2026-07-27,DOORDASH*GOODYBAG,Food & Dining,-42.21,Credit Card
+1176a319-2f25-5bbe-9bf3-7605c443113a,2026-07-27,WHOLEFREDS MKT #104,Food & Dining,-89.20,Credit Card
+37c5ac10-95dc-5971-8708-640a2c938297,2026-07-28,AMZN MKTP US*2X9Y4D,Shopping & Retail,-46.40,Credit Card
+f68c3837-efb3-5aab-83c5-d2e62a597055,2026-07-28,ATM WITHDRAWAL 4432,Financial Services,-74.74,Checking
+7d99f67a-a608-5042-ae33-8eebe2341ec6,2026-07-28,DENTAL OFFICE TAMURA,Healthcare & Medical,-160.00,Credit Card
+6577080b-394f-59f4-b1dc-f5d6d9db34db,2026-07-28,SAVINGS INTEREST PAID,Financial Services,2.24,Savings
+98560077-3a1a-5ac8-8afe-d29bb8ffd145,2026-07-29,KONBINI 7-ELEVEN #221,Food & Dining,-5.39,Credit Card
+4154965b-3841-5391-b516-77263e3fed76,2026-07-29,STARBUCKS #1042,Food & Dining,-6.50,Credit Card
+0e59e0f9-ab4d-5002-8b5d-bd31eaf5e47e,2026-07-30,UNIQLO 0214,Shopping & Retail,-32.76,Credit Card
+b20903b4-bb74-5290-8fbc-185c9860f895,2026-07-31,AMZN Mktp US*1A2B3C,Shopping & Retail,-56.79,Credit Card
+1fa4d392-2c38-5c18-aba9-ffe4ae10dc62,2026-07-31,SHELL OIL 4432,Transportation,-61.30,Credit Card
+77b0153e-8e03-5357-9943-aad07713e0b3,2026-07-31,SQ *TOKYO RAMEN YA,Food & Dining,-18.82,Credit Card
+2796e0b4-89c7-5b16-8745-9d64e187d4c9,2026-07-31,TOHO CINEMAS SHINJUKU,Entertainment & Recreation,-18.22,Credit Card
+0581e3e9-b54a-562a-b10a-5f1da95629c4,2026-08-01,ACME CORP PAYROLL DEPOSIT,Income,5200.00,Checking
+fa92cdd8-b442-5e14-af9e-1cd2bde15bdf,2026-08-01,CVS/PHARMACY #771,Healthcare & Medical,-9.11,Credit Card
+705f376a-291a-51da-ba21-e621c1d78605,2026-08-01,MCDONALD'S #1234,Food & Dining,-11.66,Credit Card
+7b23d187-88af-5d88-86cb-fbb61298cf0b,2026-08-01,SAKURA HEIGHTS APT 4B RENT,Housing,-1450.00,Checking
+e6d8f015-75c8-5277-82f8-edc372e70ac7,2026-08-02,IKEA #0042,Shopping & Retail,-119.49,Credit Card
+829e4ca5-332f-569b-8742-267fd3adcd32,2026-08-02,TARG*T 00432,Shopping & Retail,-31.20,Credit Card
+6ed773dd-b7cb-5afa-bb35-cb8ef1fe9074,2026-08-03,LYFT RIDE 0421,Transportation,-34.84,Credit Card
+2930eded-444c-5bbe-b1a5-385b9e9af40c,2026-08-03,NETFLIX.COM 866-579,Entertainment & Recreation,-15.49,Checking
+c7b8f258-5dcf-5cab-a28a-32a5c0c4d2d1,2026-08-03,SPOTIFY USA 4399,Entertainment & Recreation,-10.99,Checking
+2f96897b-02f1-5534-824b-47c421c5c3b9,2026-08-03,STEAM GAMES PURCHASE,Entertainment & Recreation,-39.90,Credit Card
+94fabc2e-f9a1-59ad-86cf-2f800999111e,2026-08-03,WHOLEFREDS MKT #104,Food & Dining,-55.52,Credit Card
+aa168c7d-74bf-565f-a41a-d771225da05b,2026-08-04,JR EAST SUICA RECHARGE,Transportation,-89.82,Credit Card
+c8d65041-6a0f-5890-a5bc-39c156ac0798,2026-08-04,JR EAST SUICA RECHARGE,Transportation,-85.77,Credit Card
+078e3934-e973-57a9-a860-2cf3c64b5238,2026-08-04,MCDONALD'S #1234,Food & Dining,-12.66,Credit Card
+f6e38377-9eba-531f-8e6a-b1b0a4031919,2026-08-05,COMCAST*INTERNET,Utilities & Services,-59.99,Checking
+fa9fd192-f1f5-5805-95cf-082d5b17e5fa,2026-08-06,AMZN Mktp US*1A2B3C,Shopping & Retail,-12.34,Credit Card
+5e27e5ca-f17b-5e73-8067-46428055c1f4,2026-08-06,SQ *TOKYO RAMEN YA,Food & Dining,-15.34,Credit Card
+a0f07bde-afc5-5069-9bff-865067438790,2026-08-06,TOHO CINEMAS SHINJUKU,Entertainment & Recreation,-27.85,Credit Card
+2fea8d8c-bb3d-5d0b-9cf6-285d4ec4d1e5,2026-08-07,AT&T MOBILE 9025,Utilities & Services,-45.00,Checking
+e14331be-47ab-55d9-9760-31a624137b27,2026-08-07,STARBUCKS STORE 08412,Food & Dining,-3.76,Credit Card
+cf11713c-5dcf-51ce-af12-1293ed2a6ef4,2026-08-08,AMZN MKTP US*2X9Y4D,Shopping & Retail,-23.08,Credit Card
+69bc3a5c-8d7a-504b-b85e-00a0858098a1,2026-08-08,FREELANCE INVOICE #1204 - DESIGN,Income,475.00,Checking
+6a890df6-4a78-5aa8-a7e3-969c18c29c67,2026-08-08,MCDONALD'S #1234,Food & Dining,-8.89,Credit Card
+00a50ab6-e5d6-5cd3-bb57-dc038ef9efa3,2026-08-09,AMZN MKTP US*2X9Y4D,Shopping & Retail,-62.49,Credit Card
+1569f745-7c04-5c28-b751-e5cb51707147,2026-08-09,KONBINI 7-ELEVEN #221,Food & Dining,-13.87,Credit Card
+658d4932-92d9-5c19-8174-2e4c60976100,2026-08-09,STARBUCKS COFFEE KIOSK,Food & Dining,-8.41,Credit Card
+babc7756-baea-5928-a8fe-65c3f77cf511,2026-08-09,UBER *TRIP HELP.UBER.CO,Transportation,-9.00,Credit Card
+7bda1097-76b6-5217-97cd-490b22c577a0,2026-08-09,UBER TRIP,Transportation,-36.23,Credit Card
+cd662c12-3160-5ab2-a4a2-05f70ebab3b2,2026-08-10,MCDONALD'S #1234,Food & Dining,-8.01,Credit Card
+e4d75438-fc85-5adb-855c-5f0719cf1de1,2026-08-10,ROUND1 BOWLING,Entertainment & Recreation,-23.99,Credit Card
+055b8961-218e-5a81-8de7-9ec64d4b477a,2026-08-10,SHELL OIL 4432,Transportation,-51.12,Credit Card
+515ff82e-0373-57ae-8b5b-4ff12200afea,2026-08-10,STARBUCKS COFFEE KIOSK,Food & Dining,-5.11,Credit Card
+ae7a9184-c2e4-5fbf-b803-c6e42dbe940d,2026-08-10,WHOLEFREDS MKT #104,Food & Dining,-91.44,Credit Card
+7c44ae5e-fb8a-5512-8025-9446ace4c3c8,2026-08-11,ATM WITHDRAWAL 4432,Financial Services,-73.61,Checking
+eca0d5c7-58e7-515b-adb4-7c7f10a89d69,2026-08-11,DOORDASH*GOODYBAG,Food & Dining,-15.86,Credit Card
+86dddebd-e617-5e3b-964d-c551bc7318b2,2026-08-11,JR EAST SUICA RECHARGE,Transportation,-34.75,Credit Card
+3edaad4d-52bd-5ed7-8e21-fff4b04afe0a,2026-08-11,MCDONALD'S #1234,Food & Dining,-12.81,Credit Card
+7a3d2a48-a128-5813-9853-d0b0e03aeee6,2026-08-12,SQ *TOKYO RAMEN YA,Food & Dining,-18.14,Credit Card
+69a7e1db-6004-5902-8f8b-30b96db426ba,2026-08-12,TOKYO ELECTRIC POWER,Utilities & Services,-81.77,Checking
+7ad7b855-199d-58bb-b20d-dda1d5005da9,2026-08-14,AMZN MKTP US*2X9Y4D,Shopping & Retail,-18.30,Credit Card
+a484eab6-65ad-5d51-bba0-b006b10d614a,2026-08-14,IKEA #0042,Shopping & Retail,-72.33,Credit Card
+e39e0aea-79e9-5883-ae91-ba63eaf5ad1d,2026-08-14,NIPPON GAS URBAN,Utilities & Services,-39.68,Checking
+a704b897-ee09-5ca2-8eec-a4ade61f51dc,2026-08-14,SQ *TOKYO RAMEN YA,Food & Dining,-21.96,Credit Card
+d7c6d0ec-b09d-5f8b-9b0f-659b7c154104,2026-08-15,KONBINI 7-ELEVEN #221,Food & Dining,-9.53,Credit Card
+acaf1840-699a-5dc0-9764-97fe0efe11e6,2026-08-15,KONBINI 7-ELEVEN #221,Food & Dining,-14.89,Credit Card
+58cf9f80-ddcf-5492-be7e-f9b556bd9c71,2026-08-15,STEAM GAMES PURCHASE,Entertainment & Recreation,-16.22,Credit Card
+6ca6f7b8-9d74-5596-9640-59464e63fb8a,2026-08-16,ATM WITHDRAWAL 4432,Financial Services,-61.52,Checking
+e2666bd7-9d46-5704-82ee-75680fb0e04a,2026-08-16,ATM WITHDRAWAL 4432,Financial Services,-47.84,Checking
+a315737c-e365-5005-a282-29b1be21e2bc,2026-08-16,DOORDASH*GOODYBAG,Food & Dining,-31.66,Credit Card
+dcce8dbf-8373-5a2a-b153-47b7d661d8d4,2026-08-16,JR EAST SUICA RECHARGE,Transportation,-25.93,Credit Card
+be2334f5-fb7b-542e-a170-e79f84ab671a,2026-08-16,SQ *TOKYO RAMEN YA,Food & Dining,-16.20,Credit Card
+e094d8b3-b9a9-54d5-a338-f4086ba87d48,2026-08-17,STEAM GAMES PURCHASE,Entertainment & Recreation,-37.00,Credit Card
+935590b9-3c41-5817-9cee-290834de84e1,2026-08-18,MCDONALD'S #1234,Food & Dining,-6.08,Credit Card
+73cb1a21-eaf4-506a-959b-1ab38c3a5615,2026-08-18,UBER TRIP,Transportation,-16.76,Credit Card
+c297b373-6ada-5218-b82e-a6b3077eec5e,2026-08-18,UBER TRIP,Transportation,-30.93,Credit Card
+17376081-9a24-5195-bc08-afce1ce4eb7f,2026-08-19,CVS/PHARMACY #771,Healthcare & Medical,-7.37,Credit Card
+ff6bd995-f8c2-52d3-905a-fd0af5fab9d6,2026-08-20,DONATION WWF JAPAN,Charity & Donations,-48.79,Checking
+a641abb3-0aae-53af-86e1-174670fc40b6,2026-08-20,SHELL OIL 4432,Transportation,-65.58,Credit Card
+6a6e8640-1782-50d7-aca3-49196bbc3001,2026-08-21,AMZN MKTP US*2X9Y4D,Shopping & Retail,-21.07,Credit Card
+f9f0c0a5-8229-541a-8138-5b1e1bfc361b,2026-08-21,ATM WITHDRAWAL 4432,Financial Services,-85.14,Checking
+08000d1b-4fe9-5fa0-9195-40c275e4e305,2026-08-21,UBER *TRIP HELP.UBER.CO,Transportation,-27.11,Credit Card
+dc664e6b-15f3-582a-8df1-525dcec15cd2,2026-08-22,AMZN Mktp US*1A2B3C,Shopping & Retail,-41.88,Credit Card
+79d46c21-6512-573c-8652-ac5c0a9f4252,2026-08-22,IKEA #0042,Shopping & Retail,-149.61,Credit Card
+e2fa28e1-6ec7-532e-94bb-dd7dec0c1f74,2026-08-22,TAXI GINZA 03-5555,Transportation,-10.66,Credit Card
+64ce5a6d-c760-523f-9ef8-b139c26f82f7,2026-08-23,TARG*T 00432,Shopping & Retail,-75.17,Credit Card
+be791fdc-4220-51c6-95a5-64336f29dff3,2026-08-23,UNIQLO 0214,Shopping & Retail,-79.38,Credit Card
+89a81346-0a7c-5385-81a0-eaa836387a9a,2026-08-23,WHOLEFREDS MKT #104,Food & Dining,-75.47,Credit Card
+cafe8c2a-fbd2-57b4-a5fa-992eb51cce49,2026-08-24,ROUND1 BOWLING,Entertainment & Recreation,-26.48,Credit Card
+b2bedd74-5b4b-5756-970f-ceda1140c093,2026-08-24,STARBUCKS COFFEE KIOSK,Food & Dining,-4.96,Credit Card
+883ee0fd-90f9-57e3-9515-0fe124ba5392,2026-08-24,STARBUCKS COFFEE KIOSK,Food & Dining,-6.68,Credit Card
+5bbac0f8-9aaf-5a3e-948f-cbf8bffb3b96,2026-08-24,STEAM GAMES PURCHASE,Entertainment & Recreation,-26.12,Credit Card
+9082d48c-107b-5519-a365-ec51d35fa89c,2026-08-25,UBER *TRIP HELP.UBER.CO,Transportation,-19.50,Credit Card
+52a882fd-6797-540c-b9aa-dfe95cc01e38,2026-08-25,WALGREENS #04421,Healthcare & Medical,-39.60,Credit Card
+641091fa-5b87-51cc-8814-69483b39ae9e,2026-08-25,WHOLEFREDS MKT #104,Food & Dining,-74.50,Credit Card
+b165e7c5-56e4-5d09-ac08-dc84eec55088,2026-08-26,SQ *TOKYO RAMEN YA,Food & Dining,-12.36,Credit Card
+04b6d1b3-adb6-5020-8436-7ef42eae7a22,2026-08-26,TARG*T 00432,Shopping & Retail,-70.39,Credit Card
+49bd92f7-ba39-5a67-8f7a-a45abb0a2b24,2026-08-26,UBER *TRIP HELP.UBER.CO,Transportation,-20.38,Credit Card
+1735fd98-fcf0-5c91-a09a-8811a6b08e42,2026-08-27,STEAM GAMES PURCHASE,Entertainment & Recreation,-17.11,Credit Card
+6d7b4c11-07cd-5233-921b-9505b3ebdfdc,2026-08-28,SAVINGS INTEREST PAID,Financial Services,4.92,Savings
+ff56739f-19d3-5a47-8924-3fec1d90ff1a,2026-08-29,MCDONALD'S #1234,Food & Dining,-10.77,Credit Card
+9ed2a039-db46-50f1-aab3-2952184beab5,2026-08-30,ATM WITHDRAWAL 4432,Financial Services,-42.25,Checking
+4ce20e3a-6b9b-5398-bfa3-4a190f80cc74,2026-08-30,BANK WIRE FEE,Financial Services,-15.00,Checking
+b3257bd4-ec89-56a8-80ac-4ac309bca644,2026-08-30,JR EAST SUICA RECHARGE,Transportation,-55.42,Credit Card
+01cf3f9d-759b-5cc3-bd41-131c4040cc53,2026-08-31,AMZN Mktp US*1A2B3C,Shopping & Retail,-109.63,Credit Card
+5660f42c-b3bc-52f1-88b3-e07352cabf26,2026-09-01,ACME CORP PAYROLL DEPOSIT,Income,5200.00,Checking
+d5971653-9edb-5ae7-b538-a1b66a63f435,2026-09-01,JR EAST SUICA RECHARGE,Transportation,-77.80,Credit Card
+dabfe023-e6fe-5ca0-8bee-41735fd6a885,2026-09-01,SAKURA HEIGHTS APT 4B RENT,Housing,-1450.00,Checking
+76540eb1-03d1-589a-8345-a8e6fd99d261,2026-09-02,JR EAST SUICA RECHARGE,Transportation,-45.45,Credit Card
+a8843e81-922d-540e-b6e8-eb2797e67ebe,2026-09-03,AMZN MKTP US*1A2B3C REFUND,Shopping & Retail,64.20,Credit Card
+5d4ea359-b7c5-5dd5-a3a6-c32ca44d2eeb,2026-09-03,IKEA #0042,Shopping & Retail,-61.39,Credit Card
+3bc0ca0e-ba1f-54c5-8199-2b7b5b381755,2026-09-03,NETFLIX.COM 866-579,Entertainment & Recreation,-15.49,Checking
+6b35876a-8d0c-5a1e-a12f-e58b7f6a1668,2026-09-03,SPOTIFY USA 4399,Entertainment & Recreation,-10.99,Checking
+c7179e5d-1770-5c5b-a92d-081d8aa6c4df,2026-09-03,UBER *TRIP HELP.UBER.CO,Transportation,-18.33,Credit Card
+b77c2d48-f38f-5b50-a062-2752d9703fac,2026-09-04,JR EAST SUICA RECHARGE,Transportation,-62.08,Credit Card
+36db77b3-db49-5014-9f03-954d2a76e312,2026-09-04,KONBINI 7-ELEVEN #221,Food & Dining,-3.43,Credit Card
+b4a7243a-66a0-560b-8310-595ddd46e603,2026-09-04,KONBINI 7-ELEVEN #221,Food & Dining,-12.72,Credit Card
+67181d45-624b-5449-a96d-32adbcd404c1,2026-09-04,STEAM GAMES PURCHASE,Entertainment & Recreation,-21.86,Credit Card
+fe79c0f7-50d6-5e70-a710-906708fd9e3c,2026-09-04,UNIQLO 0214,Shopping & Retail,-96.04,Credit Card
+c1bdb2a0-1cd2-5f4a-be7a-3f5efdf16120,2026-09-05,COMCAST*INTERNET,Utilities & Services,-59.99,Checking
+3627705f-a6f7-5e3c-a655-7f782e459c39,2026-09-05,TAXI GINZA 03-5555,Transportation,-24.36,Credit Card
+17ae52c9-2fbe-59a7-a733-6ff903397e74,2026-09-05,UBER TRIP,Transportation,-23.07,Credit Card
+c4a2cbe7-b61a-59b8-ac20-c7368f50edba,2026-09-06,AMZN MKTP US*2X9Y4D,Shopping & Retail,-23.18,Credit Card
+e88e0593-f4fd-5a9e-9bca-2ef7b55889d6,2026-09-07,AT&T MOBILE 9025,Utilities & Services,-45.00,Checking
+d537d167-f04f-57f3-bf71-d8d20849cc31,2026-09-07,STEAM GAMES PURCHASE,Entertainment & Recreation,-59.97,Credit Card
+f78fc71d-6a31-58a2-a9a7-66ba79cec18b,2026-09-08,AMZN MKTP US*2X9Y4D,Shopping & Retail,-46.35,Credit Card
+78abc8bb-17b0-59f8-bcd2-45c67cf50c94,2026-09-08,ATM WITHDRAWAL 4432,Financial Services,-70.93,Checking
+0cb70244-120b-5267-8266-81a58de9bafc,2026-09-08,DOORDASH*GOODYBAG,Food & Dining,-40.68,Credit Card
+ad3e706f-59df-52da-b5e1-bca2539ea95f,2026-09-08,KONBINI 7-ELEVEN #221,Food & Dining,-9.85,Credit Card
+4a4a6ede-9530-5d2b-a9e8-03e56993fdd9,2026-09-08,TARG*T 00432,Shopping & Retail,-67.27,Credit Card
+1cf5a41e-22d2-5ec8-ad63-3add0daabd1f,2026-09-09,CVS/PHARMACY #771,Healthcare & Medical,-6.28,Credit Card
+89733420-a8a4-583f-9bbe-94efc2699cee,2026-09-10,ATM WITHDRAWAL 4432,Financial Services,-83.09,Checking
+4f853018-8089-55e7-971f-8edde4ccaf64,2026-09-10,ROUND1 BOWLING,Entertainment & Recreation,-22.78,Credit Card
+dbe65b48-fa52-576d-ba8f-d467fd11ce96,2026-09-10,ROUND1 BOWLING,Entertainment & Recreation,-10.44,Credit Card
+12ee1954-ea1c-5ad8-8133-d3afc21d23ce,2026-09-11,DOORDASH*GOODYBAG,Food & Dining,-43.03,Credit Card
+5683ad2f-7875-5223-a43e-546257da3068,2026-09-11,LYFT RIDE 0421,Transportation,-25.20,Credit Card
+73e4f486-0b65-53f5-adc0-7e8626d06b5b,2026-09-11,SHELL OIL 4432,Transportation,-69.14,Credit Card
+cb72b70e-d948-5fec-a041-a05e5cfafb2b,2026-09-12,DENTAL OFFICE TAMURA,Healthcare & Medical,-155.00,Credit Card
+f871b2ec-a843-5a6c-b1c7-cb2ff7ead3f5,2026-09-12,KONBINI 7-ELEVEN #221,Food & Dining,-7.99,Credit Card
+69e88039-abfe-58b3-90f3-437198c75097,2026-09-12,ROUND1 BOWLING,Entertainment & Recreation,-21.50,Credit Card
+cf4c17eb-20d1-518d-a7c6-ea30d76ba5e2,2026-09-12,TARG*T 00432,Shopping & Retail,-45.15,Credit Card
+16b835ee-f90d-50ca-a0da-4cefdcf893b1,2026-09-12,TOKYO ELECTRIC POWER,Utilities & Services,-87.50,Checking
+f72e3ee7-e9ef-5161-83cc-79d9ca34d10d,2026-09-13,JR EAST SUICA RECHARGE,Transportation,-99.07,Credit Card
+6e00fbab-334b-5700-9953-d7169907d861,2026-09-13,SHELL OIL 4432,Transportation,-72.94,Credit Card
+cceddb5c-f89d-5e46-b491-86be061786cd,2026-09-13,STARBUCKS STORE 08412,Food & Dining,-3.67,Credit Card
+4b4d2220-d79a-5baf-9381-2f7eb7991c2c,2026-09-14,KONBINI 7-ELEVEN #221,Food & Dining,-3.81,Credit Card
+229c966e-31f6-5230-814c-8574b38edf6d,2026-09-14,NIPPON GAS URBAN,Utilities & Services,-34.10,Checking
+0da29834-7c25-5bda-9f6c-f93895ce492d,2026-09-15,AMZN Mktp US*1A2B3C,Shopping & Retail,-33.29,Credit Card
+1ef0216d-a8cb-59b5-83f2-a8a926606b9a,2026-09-15,DOORDASH*GOODYBAG,Food & Dining,-42.99,Credit Card
+3e42dee7-90b4-5d5a-bdea-66479f5622de,2026-09-15,MCDONALD'S #1234,Food & Dining,-13.05,Credit Card
+370e817d-7197-5be5-b455-d150a7866d1d,2026-09-15,TARG*T 00432,Shopping & Retail,-32.87,Credit Card
+3b496d2c-3482-5176-a037-9df245617bfd,2026-09-15,TOHO CINEMAS SHINJUKU,Entertainment & Recreation,-30.90,Credit Card
+b01da57f-bf34-53bf-bf88-5d5f81be0bdf,2026-09-16,AMZN MKTP US*2X9Y4D,Shopping & Retail,-82.94,Credit Card
+d740ebf9-eb8c-5f8b-a9fa-96af02fa41b7,2026-09-16,STARBUCKS STORE 08412,Food & Dining,-6.26,Credit Card
+ae791d4b-2940-526b-9630-f21fd2ae1ca9,2026-09-17,AMZN MKTP US*2X9Y4D,Shopping & Retail,-42.38,Credit Card
+fcf8b72c-aa1c-534b-96e1-b349f2fd3982,2026-09-17,MCDONALD'S #1234,Food & Dining,-11.64,Credit Card
+60bd8550-8e7b-5bcd-a3b3-f00f067ad091,2026-09-17,UBER TRIP REFUND,Transportation,12.40,Credit Card
+1475fc29-fc57-50ea-91c8-1c2a18978da4,2026-09-18,MCDONALD'S #1234,Food & Dining,-7.05,Credit Card
+4289a37a-6fe8-5dde-96d6-2d7e482fed2b,2026-09-18,STARBUCKS #1042,Food & Dining,-5.13,Credit Card
+63c0d2a8-85ee-5acd-b089-603f4f9e9ffa,2026-09-20,DONATION WWF JAPAN,Charity & Donations,-26.01,Checking
+a4a905f5-c9f1-579f-b755-5f19878f716c,2026-09-20,SQ *TOKYO RAMEN YA,Food & Dining,-18.83,Credit Card
+4560f95a-dfd5-5958-b745-f07df6447378,2026-09-21,ATM WITHDRAWAL 4432,Financial Services,-27.77,Checking
+fc97f066-cf20-5241-bf05-5d47f2bb4a0d,2026-09-21,JR EAST SUICA RECHARGE,Transportation,-26.43,Credit Card
+77f03443-fd90-531e-b197-e5cece51a2cc,2026-09-22,ATM WITHDRAWAL 4432,Financial Services,-80.45,Checking
+8eb7d128-62fa-52fc-903d-408cc985922d,2026-09-22,STARBUCKS #1042,Food & Dining,-6.98,Credit Card
+ebe3e21f-639b-511b-b317-c1493cd2482a,2026-09-22,STEAM GAMES PURCHASE,Entertainment & Recreation,-37.33,Credit Card
+d78c726b-410f-5ebc-b17c-ca4fd8ccdadd,2026-09-23,JR EAST SUICA RECHARGE,Transportation,-93.07,Credit Card
+8bf7e668-730e-5e24-887b-6dd78a83495f,2026-09-23,STEAM GAMES PURCHASE,Entertainment & Recreation,-22.50,Credit Card
+b5c9d79f-c5a9-5e83-8f95-13827461c108,2026-09-23,TAXI GINZA 03-5555,Transportation,-36.51,Credit Card
+59a447c4-50f9-5504-8bcb-4825003e7a28,2026-09-23,WHOLEFREDS MKT #104,Food & Dining,-48.46,Credit Card
+0316a5b3-53bd-5b2f-b59f-44a9d461d990,2026-09-23,WHOLEFREDS MKT #104,Food & Dining,-55.30,Credit Card
+d19c4e8f-3701-5a63-847f-74223f6ba8f6,2026-09-25,ATM WITHDRAWAL 4432,Financial Services,-83.91,Checking
+3d6ce16d-a506-5fec-8512-cd389825eb7b,2026-09-25,KONBINI 7-ELEVEN #221,Food & Dining,-3.77,Credit Card
+30e4f8b6-a6e6-5d20-80c5-0a9227236a33,2026-09-26,TARG*T 00432,Shopping & Retail,-18.93,Credit Card
+e7c45e75-d5f5-569e-aed8-1d5fecb6406e,2026-09-27,CVS/PHARMACY #771,Healthcare & Medical,-36.74,Credit Card
+a4d0f869-b24a-56c9-ab2a-72262be5d133,2026-09-27,DOORDASH*GOODYBAG,Food & Dining,-29.47,Credit Card
+2a2484d4-89bd-5754-b8b5-0bdb9df0a62e,2026-09-27,MCDONALD'S #1234,Food & Dining,-6.02,Credit Card
+ecd66af8-4d3a-5975-b204-aeb7253072d1,2026-09-27,MCDONALD'S #1234,Food & Dining,-10.70,Credit Card
+45cd60ac-e1c3-523f-8a39-772a4ab27d51,2026-09-27,WHOLEFREDS MKT #104,Food & Dining,-112.60,Credit Card
+28b7df4b-760d-5b86-b84d-9b0b14702cbf,2026-09-28,DOORDASH*GOODYBAG,Food & Dining,-30.44,Credit Card
+35250606-76c5-558b-8661-8c9ee57bb260,2026-09-28,IKEA #0042,Shopping & Retail,-84.29,Credit Card
+0aef9299-5201-5f13-9a78-b6053bb034ac,2026-09-28,JR EAST SUICA RECHARGE,Transportation,-72.38,Credit Card
+dd64d6b1-118c-5620-90ec-72f1d42dedb9,2026-09-28,JR EAST SUICA RECHARGE,Transportation,-63.28,Credit Card
+9c0ec45c-502e-541c-8e66-4e4b7f17c0d2,2026-09-28,KONBINI 7-ELEVEN #221,Food & Dining,-5.23,Credit Card
+a301646c-4d57-5857-8255-93b3ebd9bbba,2026-09-28,LYFT RIDE 0421,Transportation,-26.53,Credit Card
+2fed35ee-c246-5759-b8fe-45ad8d196417,2026-09-28,SAVINGS INTEREST PAID,Financial Services,4.71,Savings
+ec7fc9a3-d25d-5222-bddc-e53953560faf,2026-09-28,STARBUCKS STORE 08412,Food & Dining,-3.24,Credit Card
+c49ea400-3d47-500a-85c3-047a87b9aaab,2026-09-29,AMZN Mktp US*1A2B3C,Shopping & Retail,-114.99,Credit Card
+5884f361-6f0c-507a-b21f-7f78b1c125be,2026-09-29,TARG*T 00432,Shopping & Retail,-17.03,Credit Card
+18cf809b-d0f2-54ab-b404-282ceb0f0a5d,2026-09-30,WALGREENS #04421,Healthcare & Medical,-36.50,Credit Card
+d6f68558-09b4-5776-aa3f-2d38e36d3e5d,2026-10-01,ACME CORP PAYROLL DEPOSIT,Income,5200.00,Checking
+dd9d0f28-71f5-5c2b-b959-9b60ca33c317,2026-10-01,KONBINI 7-ELEVEN #221,Food & Dining,-12.29,Credit Card
+562bf274-67fe-5b3c-a207-2cd9edafbb5a,2026-10-01,SAKURA HEIGHTS APT 4B RENT,Housing,-1450.00,Checking
+60decf3f-10e3-5721-8f3e-36500c5624ba,2026-10-01,SHELL OIL 4432,Transportation,-42.48,Credit Card
+93abfd1c-4ddd-5549-b987-6353b2cf3a2e,2026-10-02,AMZN Mktp US*1A2B3C,Shopping & Retail,-139.82,Credit Card
+26a53d6f-880e-5d91-95f8-825f54d9e85e,2026-10-02,IKEA #0042,Shopping & Retail,-137.72,Credit Card
+96f3237b-2609-545b-b203-77f5b571eba2,2026-10-02,STARBUCKS STORE 08412,Food & Dining,-6.31,Credit Card
+2b969b01-8d09-55db-a6c6-96ccdfc0033b,2026-10-02,UBER TRIP,Transportation,-31.60,Credit Card
+e48af0fa-1095-5426-9701-2703c5a41f66,2026-10-03,CVS/PHARMACY #771,Healthcare & Medical,-9.10,Credit Card
+6e684059-87ae-5858-9212-58f1111d5cca,2026-10-03,JR EAST SUICA RECHARGE,Transportation,-73.02,Credit Card
+697ff679-c5cb-545d-a5ed-b5273d75d06c,2026-10-03,NETFLIX.COM 866-579,Entertainment & Recreation,-15.49,Checking
+cc5ea52f-b9ef-54f1-adb4-a20819d1a99c,2026-10-03,SPOTIFY USA 4399,Entertainment & Recreation,-10.99,Checking
+5fec6b07-532c-566a-b1b0-87be48e7fff4,2026-10-03,SQ *TOKYO RAMEN YA,Food & Dining,-19.28,Credit Card
+d9a5381c-5aaf-5a0c-8125-1c488c3acdae,2026-10-03,UBER *TRIP HELP.UBER.CO,Transportation,-26.26,Credit Card
+22fc21fb-b243-5461-9b0b-120e30b062ab,2026-10-03,WALGREENS #04421,Healthcare & Medical,-28.30,Credit Card
+ed28ccbe-c4ef-5fb7-a7e3-f4426efd69b3,2026-10-04,ROUND1 BOWLING,Entertainment & Recreation,-27.06,Credit Card
+5075efae-2d86-5f34-a1e4-7f7a1196f048,2026-10-04,SQ *TOKYO RAMEN YA,Food & Dining,-17.77,Credit Card
+c73b5095-291b-5ba4-8d94-ffb4e92b3609,2026-10-04,SQ *TOKYO RAMEN YA,Food & Dining,-21.75,Credit Card
+9ff74c35-79f8-5586-9004-2226c2959828,2026-10-04,UBER *TRIP HELP.UBER.CO,Transportation,-22.54,Credit Card
+00f6fb93-33b3-521f-b0d1-a80381afc940,2026-10-05,COMCAST*INTERNET,Utilities & Services,-59.99,Checking
+110a44a7-01cf-5961-a2e5-bb7cf8a0ca4f,2026-10-05,IKEA #0042,Shopping & Retail,-35.18,Credit Card
+7e76efb2-9d5f-54d9-8af9-b67f6dcc50d8,2026-10-05,STARBUCKS COFFEE KIOSK,Food & Dining,-7.77,Credit Card
+078f0495-21b3-5397-a131-f563800521b5,2026-10-05,UBER *TRIP HELP.UBER.CO,Transportation,-25.31,Credit Card
+242099f0-e134-5835-b39e-bde18632bfc9,2026-10-05,UBER *TRIP HELP.UBER.CO,Transportation,-19.88,Credit Card
+864fba1d-6668-563b-99bf-53516bde29c0,2026-10-05,UBER TRIP,Transportation,-8.45,Credit Card
+19211c22-2cb9-527c-bc9f-12f8bdc8c0be,2026-10-06,AMZN MKTP US*2X9Y4D REFUND,Shopping & Retail,29.99,Credit Card
+4d832090-a30a-56a4-b5ad-cc6fa459a774,2026-10-07,AT&T MOBILE 9025,Utilities & Services,-45.00,Checking
+b65fc1d4-b9ab-5e57-890c-46ddf3337c1c,2026-10-07,LYFT RIDE 0421,Transportation,-34.17,Credit Card
+2fef03ed-32f9-5fd9-96a1-52519e3bf4c5,2026-10-07,SHELL OIL 4432,Transportation,-56.39,Credit Card
+19728059-2a14-511d-9a9a-0015bff4eabc,2026-10-09,STARBUCKS #1042,Food & Dining,-5.65,Credit Card
+c831904e-0ae6-5397-8c0d-bf20c1307360,2026-10-09,UBER *TRIP HELP.UBER.CO,Transportation,-9.15,Credit Card
+71f3f27f-5e9d-54b0-8b73-738172b58b5b,2026-10-10,IKEA #0042,Shopping & Retail,-96.00,Credit Card
+9a2196e0-18ee-57a3-876e-3688183d831f,2026-10-11,STEAM GAMES PURCHASE,Entertainment & Recreation,-43.26,Credit Card
+5154a455-e833-552c-b937-076d999ae4fc,2026-10-11,UBER *TRIP HELP.UBER.CO,Transportation,-25.04,Credit Card
+a5a29fb9-77f5-5f64-954c-5241e4e25eb1,2026-10-12,KONBINI 7-ELEVEN #221,Food & Dining,-13.09,Credit Card
+bad7db7e-0a3d-532c-9791-37a7edf0b327,2026-10-12,TAXI GINZA 03-5555,Transportation,-10.88,Credit Card
+92992b36-8ac5-553f-b01d-679da1ccc81f,2026-10-12,TOKYO ELECTRIC POWER,Utilities & Services,-70.04,Checking
+5fd95353-7f6e-5346-92cf-61a503e08082,2026-10-14,NIPPON GAS URBAN,Utilities & Services,-40.73,Checking
+afdec77b-ceb4-556a-bd58-1329b3792aed,2026-10-14,UNIQLO 0214,Shopping & Retail,-88.61,Credit Card
+ee65685c-0e61-528b-bd15-9b3d3a5db0af,2026-10-15,DOORDASH*GOODYBAG,Food & Dining,-26.13,Credit Card
+c0a134cb-cb8a-5230-8238-1f0e1be175ac,2026-10-15,KONBINI 7-ELEVEN #221,Food & Dining,-17.26,Credit Card
+5c417221-6464-5c31-9bf7-5379458114f3,2026-10-16,AMZN Mktp US*1A2B3C,Shopping & Retail,-69.38,Credit Card
+f8d7818b-0cdc-56bd-83d0-8479c2e59b0b,2026-10-16,MCDONALD'S #1234,Food & Dining,-6.93,Credit Card
+ac4a2d1f-4677-5631-b679-1f58cbb8bd34,2026-10-17,IKEA #0042,Shopping & Retail,-70.71,Credit Card
+43456f2a-282f-5802-9615-d45fa682b76a,2026-10-17,TARG*T 00432,Shopping & Retail,-56.56,Credit Card
+9a0e82ea-6543-5b08-b17e-9aa927fe5ff9,2026-10-17,UNIQLO 0214,Shopping & Retail,-31.36,Credit Card
+1a16acac-2d83-5c7d-9292-693f56efdfc6,2026-10-17,UNIQLO 0214,Shopping & Retail,-42.15,Credit Card
+53452412-fc4d-58ec-bad6-119326c3598f,2026-10-18,LYFT RIDE 0421,Transportation,-32.44,Credit Card
+044add44-83dc-5f4f-ab4f-744b72720e72,2026-10-19,ATM WITHDRAWAL 4432,Financial Services,-96.53,Checking
+b3d8c971-8fd7-5f24-a2db-437c80ec9c82,2026-10-19,DOORDASH*GOODYBAG,Food & Dining,-37.27,Credit Card
+0fc4eb59-7327-5fd2-8afa-6b9ca492855f,2026-10-19,MCDONALD'S #1234,Food & Dining,-9.05,Credit Card
+cba2558a-848a-5ac7-b610-2e7d12570f27,2026-10-19,UBER *TRIP HELP.UBER.CO,Transportation,-15.12,Credit Card
+91a9b007-f754-56ae-9bc1-a43557f4442e,2026-10-20,DONATION WWF JAPAN,Charity & Donations,-45.68,Checking
+485744f8-1918-5f79-afb6-0e47cb066246,2026-10-20,ROUND1 BOWLING,Entertainment & Recreation,-18.60,Credit Card
+1d83c1e3-053f-5afd-91e7-e68ebf92a99c,2026-10-20,TARG*T 00432,Shopping & Retail,-59.32,Credit Card
+68f04497-84d3-556e-bab8-92006fd4cd33,2026-10-21,MCDONALD'S #1234,Food & Dining,-9.27,Credit Card
+75d8b9f7-ef0a-585a-9ddb-7de484e49d09,2026-10-21,STARBUCKS COFFEE KIOSK,Food & Dining,-8.12,Credit Card
+e94fb46b-9d9d-5349-b9ee-dd8577f8c4f6,2026-10-21,TAXI GINZA 03-5555,Transportation,-27.51,Credit Card
+2e011f29-5f05-5204-98c9-cd0b27e61ad2,2026-10-22,ATM WITHDRAWAL 4432,Financial Services,-29.78,Checking
+832ce93c-2875-55ab-b7fc-6195c5ab2f97,2026-10-23,IKEA #0042,Shopping & Retail,-75.40,Credit Card
+d6ca5d11-bdcf-5556-a7a3-6951c4ef9929,2026-10-23,STARBUCKS #1042,Food & Dining,-4.98,Credit Card
+0f3c2aba-c43c-5fda-9ab9-4354e20d2f71,2026-10-23,UNIQLO 0214,Shopping & Retail,-110.97,Credit Card
+76378cf3-f943-56ea-9c92-5e5d0e805dff,2026-10-24,FREELANCE INVOICE #1231 - DESIGN,Income,520.00,Checking
+a576e3de-4187-5bfb-9a92-ccaa747b3cfe,2026-10-24,STEAM GAMES PURCHASE,Entertainment & Recreation,-14.75,Credit Card
+ee30540f-b3a2-556b-8237-85ed1bc2a812,2026-10-26,ATM WITHDRAWAL 4432,Financial Services,-30.41,Checking
+8a82c343-f0d3-5735-8a60-e4dcaba597f4,2026-10-26,SQ *TOKYO RAMEN YA,Food & Dining,-10.50,Credit Card
+5a87bf81-943f-5c1d-812f-38d3bd8a92b2,2026-10-27,MCDONALD'S #1234,Food & Dining,-7.32,Credit Card
+31c9eff2-6cbf-5033-ba8c-84c16d530e8b,2026-10-27,STARBUCKS COFFEE KIOSK,Food & Dining,-6.45,Credit Card
+83398627-b204-56ad-907a-5c6f9fbe5670,2026-10-27,STEAM GAMES PURCHASE,Entertainment & Recreation,-32.67,Credit Card
+58b26097-0f64-543d-a311-9b35072cb3fd,2026-10-28,ATM WITHDRAWAL 4432,Financial Services,-73.23,Checking
+6448e072-9477-5067-9ab6-063b591c563b,2026-10-28,ATM WITHDRAWAL 4432,Financial Services,-93.27,Checking
+b78c3af5-dd7a-5d63-a948-7684fb8a90f9,2026-10-28,ROUND1 BOWLING,Entertainment & Recreation,-14.30,Credit Card
+7574696a-757f-5641-ba77-cf73732f009f,2026-10-28,SAVINGS INTEREST PAID,Financial Services,4.54,Savings
+1ef452bf-b172-5ed2-9c2b-9578b0393554,2026-10-28,WHOLEFREDS MKT #104,Food & Dining,-92.49,Credit Card
+8b47215a-698b-530c-ad79-a4163e24ecc3,2026-10-29,AMZN Mktp US*1A2B3C,Shopping & Retail,-22.34,Credit Card
+78fe3b7d-cb10-5510-8e62-8ef2b41fcbf0,2026-10-29,ROUND1 BOWLING,Entertainment & Recreation,-25.38,Credit Card
+7c16af2a-b6a6-59ab-b3a6-fdbde399daa9,2026-10-29,STARBUCKS STORE 08412,Food & Dining,-4.45,Credit Card
+920c2812-66d3-5ab7-ad93-b76910da7e51,2026-10-29,STEAM GAMES PURCHASE,Entertainment & Recreation,-21.42,Credit Card
+e4006287-1d59-556b-b290-a674ccb0b992,2026-10-29,WHOLEFREDS MKT #104,Food & Dining,-80.69,Credit Card
+9773911a-9a47-59f0-b28e-098031af693a,2026-10-30,BANK WIRE FEE,Financial Services,-15.00,Checking
+e1cbb0e7-2d77-5b34-9d87-85d78be86613,2026-10-30,SQ *TOKYO RAMEN YA,Food & Dining,-16.93,Credit Card
+8d674b6d-68b3-53aa-8d44-d1d3fff98818,2026-10-31,CVS/PHARMACY #771,Healthcare & Medical,-11.19,Credit Card
+89ac7e00-855d-5b41-8334-b54da3df2783,2026-10-31,DOORDASH*GOODYBAG,Food & Dining,-40.37,Credit Card
+9546b84e-2a67-5912-90f8-6a5875355eb1,2026-10-31,DOORDASH*GOODYBAG,Food & Dining,-43.55,Credit Card
+2cbc7448-1a36-5a1c-a76a-1d6bf4f7766f,2026-10-31,KONBINI 7-ELEVEN #221,Food & Dining,-15.10,Credit Card

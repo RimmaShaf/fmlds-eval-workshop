@@ -1,0 +1,24 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Secrets — never commit
+.env
+*.key
+seat_keys*.csv
+secrets*.json
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS / editor / tools
+.DS_Store
+.vscode/
+.idea/
+.ruff_cache/
+
+# Eval artifacts (regenerated locally / in CI)
+results/
+*.scorecard.json

@@ -1,0 +1,23 @@
+app = "fmlds-eval-workshop-gateway"
+primary_region = "nrt"
+
+[build]
+  dockerfile = "infra/Dockerfile"
+
+[env]
+  PORT = "8080"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_min_machines = 1
+  processes = ["app"]
+
+  [[http_service.http_checks]]
+    path = "/health/liveliness"
+    method = "GET"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"

@@ -1,0 +1,39 @@
+name: evals
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "0 15 * * *"
+  workflow_dispatch:
+
+jobs:
+  golden-suite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt nbformat
+      - name: Dataset integrity (seed + frozen ground truths)
+        run: python scripts/generate_dataset.py --check
+      - name: Golden suite gate (baseline agent, mock mode)
+        run: python scripts/run_evals.py --mode mock --config baseline --min-pass-rate 0.9
+      - name: Gate self-test (a known-bad regression must be caught)
+        run: python scripts/run_evals.py --mode mock --config regression --expect-regression
+
+  nightly-live:
+    if: github.event_name == 'schedule' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt nbformat
+      - name: Golden suite gate (baseline agent, live model)
+        if: ${{ secrets.OPENAI_API_KEY != '' }}
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python scripts/run_evals.py --mode direct --config baseline --min-pass-rate 0.8

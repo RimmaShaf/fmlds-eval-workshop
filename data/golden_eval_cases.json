@@ -1,0 +1,160 @@
+{
+  "seed": 42,
+  "dataset": "data/transactions.csv",
+  "n_rows": 508,
+  "date_range": [
+    "2026-05-01",
+    "2026-10-31"
+  ],
+  "ground_truth": {
+    "oct_expenses": 4358.7,
+    "starbucks": 259.62,
+    "total_income": 33282.26,
+    "top_category": "Housing",
+    "top_category_value": 8700.0,
+    "avg_monthly_expenses": 4483.87,
+    "largest_expense_value": 1450.0,
+    "largest_expense_merchant": "SAKURA HEIGHTS APT 4B RENT",
+    "may_transaction_count": 85,
+    "savings_total": 2526.52,
+    "emergency_fund_target": 13451.61,
+    "monthly_income": 5200.0
+  },
+  "cases": [
+    {
+      "id": "total_expenses_october",
+      "query": "What were my total expenses in October?",
+      "type": "numeric",
+      "trap": "polarity",
+      "expected": {
+        "value": 4358.7
+      },
+      "tolerance": 0.01,
+      "ground_truth_logic": "df[(df.date.dt.month == 10) & (df.amount < 0)].amount.sum(), reported as a positive magnitude"
+    },
+    {
+      "id": "starbucks_total",
+      "query": "How much did I spend at Starbucks in total?",
+      "type": "numeric",
+      "trap": "fragmentation",
+      "expected": {
+        "value": 259.62
+      },
+      "tolerance": 0.01,
+      "ground_truth_logic": "rows where raw_description contains 'STARBUCKS' (case-insensitive) and amount < 0, spend magnitudes summed"
+    },
+    {
+      "id": "merchant_location",
+      "query": "Show me my spending broken down by merchant location.",
+      "type": "behavior",
+      "trap": "schema_drift",
+      "expected": {
+        "behavior": "recognizes that no location/city column exists in the schema and says so, pivoting to a valid breakdown (e.g. by merchant) instead of fabricating locations"
+      },
+      "ground_truth_logic": "the schema has exactly these columns: transaction_id, date, raw_description, category, amount, account_type - there is no merchant_city or location column",
+      "judge_rubric": [
+        "schema_fidelity: does not fabricate or assume non-existent columns (1-5)",
+        "honesty: clearly tells the user the requested breakdown is unavailable (1-5)",
+        "usefulness: offers the closest legitimate alternative analysis (1-5)"
+      ]
+    },
+    {
+      "id": "total_income",
+      "query": "What was my total income over the whole 6-month period?",
+      "type": "numeric",
+      "trap": null,
+      "expected": {
+        "value": 33282.26
+      },
+      "tolerance": 0.01,
+      "ground_truth_logic": "df[df.category == 'Income'].amount.sum() (salary + freelance + dividends + tax refund)"
+    },
+    {
+      "id": "top_spending_category",
+      "query": "Which category did I spend the most money on, and how much?",
+      "type": "numeric",
+      "trap": null,
+      "expected": {
+        "value": 8700.0,
+        "category": "Housing"
+      },
+      "tolerance": 0.01,
+      "ground_truth_logic": "expenses grouped by category, highest total spend magnitude wins"
+    },
+    {
+      "id": "avg_monthly_spending",
+      "query": "On average, how much did I spend per month?",
+      "type": "numeric",
+      "trap": null,
+      "expected": {
+        "value": 4483.87
+      },
+      "tolerance": 0.01,
+      "ground_truth_logic": "mean over the 6 months of each month's total expense magnitude (amount < 0)"
+    },
+    {
+      "id": "largest_single_expense",
+      "query": "What was my single largest expense, and at which merchant?",
+      "type": "numeric",
+      "trap": null,
+      "expected": {
+        "value": 1450.0,
+        "merchant_contains": "SAKURA HEIGHTS APT 4B RENT"
+      },
+      "tolerance": 0.01,
+      "ground_truth_logic": "row with the minimum (most negative) amount; magnitude and raw_description"
+    },
+    {
+      "id": "transaction_count_may",
+      "query": "How many transactions did I make in May?",
+      "type": "numeric",
+      "trap": null,
+      "expected": {
+        "value": 85
+      },
+      "tolerance": 0.0,
+      "ground_truth_logic": "count of rows where date.dt.month == 5 (income and expenses both count)"
+    },
+    {
+      "id": "advisory_budget_5030_20",
+      "query": "I want to follow the 50/30/20 budgeting rule. Based on my transactions, how am I doing and what should I change?",
+      "type": "advisory",
+      "trap": null,
+      "expected": {
+        "anchors": {
+          "monthly_income": 5200.0,
+          "avg_monthly_expenses": 4483.87,
+          "needs_target": 2600.0,
+          "wants_target": 1560.0,
+          "savings_target": 1040.0
+        }
+      },
+      "ground_truth_logic": "the agent should consult the financial rules tool for 50/30/20 and reason from monthly income 5200.00",
+      "judge_rubric": [
+        "actionability: concrete, prioritized next steps grounded in the data (1-5)",
+        "heuristic_adherence: correctly applies the requested financial rule (1-5)",
+        "numerical_fidelity: every stated figure matches the provided ground truth (1-5)"
+      ]
+    },
+    {
+      "id": "advisory_emergency_fund",
+      "query": "Do I currently have enough in savings to cover a 3-month emergency fund? Please advise.",
+      "type": "advisory",
+      "trap": null,
+      "expected": {
+        "anchors": {
+          "savings_total": 2526.52,
+          "avg_monthly_expenses": 4483.87,
+          "emergency_fund_target": 13451.61,
+          "verdict": "no - savings are far below the 3-month target"
+        }
+      },
+      "ground_truth_logic": "savings balance vs 3 x average monthly expenses",
+      "judge_rubric": [
+        "actionability: concrete, prioritized next steps grounded in the data (1-5)",
+        "heuristic_adherence: correctly applies the requested financial rule (1-5)",
+        "numerical_fidelity: every stated figure matches the provided ground truth (1-5)"
+      ]
+    }
+  ]
+}

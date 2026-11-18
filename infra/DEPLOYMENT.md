@@ -202,7 +202,8 @@ Success looks like, in order: container starts → config loaded → **`Prisma D
 Connected`** (this is where Supabase either works or doesn't) → uvicorn
 listening on `0.0.0.0:8080` → health checks passing.
 
-Then from anywhere:
+After ~90 s confirm with `fly status -c infra/fly.toml`: one machine, `started`,
+and `CHECKS: 1 total, 1 passing`. Then from anywhere:
 
 ```bash
 curl https://fmlds-eval-workshop-gateway.fly.dev/health/liveliness
@@ -285,6 +286,9 @@ In this order:
 | Supabase auth fails though password is "right" | special character in password not percent-encoded in the URI | reset DB password to `openssl rand -hex 24` and re-copy the URI |
 | `DB not connected` / `/key/generate` 500 | `DATABASE_URL` missing, or transaction-mode (port 6543) pooler breaks Prisma | session pooler URI, port 5432 |
 | Deploy succeeds, notebook can't reach gateway | placeholder URL still in the notebook | Phase 4 of the repo-publish plan (README runbook) |
+| `fly status` shows empty `CHECKS`, no health monitoring | `[[http_service.http_checks]]` is **not a valid key** in current fly.toml — flyctl silently drops unknown sections, so it never errored, it just vanished | use `[[http_service.checks]]` with `path`/`method`/`interval`/`timeout`/`grace_period` (committed in `infra/fly.toml`) |
+| Health check fails right after deploy, machine shows "unhealthy" | check fired during boot: LiteLLM binds port 8080 only after Prisma prep + migrations (~30–60 s) | `grace_period = "60s"` — already set |
+| Two machines running, double the cost | repeated deploys each added a machine instead of replacing | `fly scale count 1 -c infra/fly.toml --yes` |
 | Fly billing demands tax ID | "Business" account type selected | Individual → field becomes optional |
 | Can't find 2FA on Fly | it's per-user | avatar → Account → 2FA |
 

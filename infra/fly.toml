@@ -19,9 +19,12 @@ primary_region = 'nrt'
   auto_stop_machines = 'off'
   processes = ['app']
 
-  [[http_service.http_checks]]
-    path = "/health/liveliness"
+  [[http_service.checks]]
+    grace_period = "60s"
+    interval = "30s"
     method = "GET"
+    timeout = "5s"
+    path = "/health/liveliness"
 
 [[vm]]
   size = 'shared-cpu-1x'

@@ -18,6 +18,7 @@ secrets*.json
 .vscode/
 .idea/
 .ruff_cache/
+.omc/
 
 # Eval artifacts (regenerated locally / in CI)
 results/

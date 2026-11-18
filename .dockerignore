@@ -1,0 +1,22 @@
+# Build context = repo root (set in infra/fly.toml: [build] context = "..").
+# Keep in sync with .gitignore: nothing secret, huge, or local-only should
+# reach the remote builder. Must NOT ignore infra/ — the image copies
+# infra/litellm_config.yaml.
+.git
+.venv
+.omc
+.env
+*.key
+seat_keys*.csv
+secrets*.json
+results
+.ruff_cache
+.ipynb_checkpoints
+**/__pycache__
+**/*.pyc
+**/*.egg-info
+*.scorecard.json
+.DS_Store
+.vscode
+.idea
+fly.toml

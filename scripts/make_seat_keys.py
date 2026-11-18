@@ -38,7 +38,7 @@ def generate_key(proxy_url: str, master_key: str, payload: dict) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--proxy-url", default=os.getenv("LITELLM_PROXY_URL", "https://your-tokyo-proxy.fly.dev"))
+    parser.add_argument("--proxy-url", default=os.getenv("LITELLM_PROXY_URL", "https://fmlds-eval-workshop-gateway.fly.dev"))
     parser.add_argument("--seats", type=int, default=50)
     parser.add_argument("--budget", type=float, default=2.00)
     parser.add_argument("--rpm", type=int, default=15)

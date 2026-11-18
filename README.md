@@ -1,5 +1,9 @@
 # Evaluating AI-Assisted Data Science Workflows
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/RimmaShaf/fmlds-eval-workshop/blob/main/workshop.ipynb)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/RimmaShaf/fmlds-eval-workshop?quickstart=1)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/RimmaShaf/fmlds-eval-workshop/main?urlpath=tree%2Fworkshop.ipynb)
+
 **Building a Financial Agent, Uncovering Silent Failures, and Implementing Automated Evals** — a 3-hour hands-on masterclass. Participants build a Python AI agent over a synthetic bank ledger, watch it fail *silently* on three engineered traps, then replace vibe-checking with an automated eval suite that catches a deliberately injected regression.
 
 | | |
@@ -33,7 +37,7 @@ infra/fly.toml, infra/Dockerfile  Tokyo (nrt) deployment
 
 ## Participant quickstart
 
-**Google Colab (primary):** open `workshop.ipynb` in Colab, set Colab secrets or edit the config cell — `WORKSHOP_MODE=gateway`, your seat key as `LITELLM_API_KEY` (from the view-only key sheet on your desk card) — then run top to bottom. No Kaggle auth, no uploads: the data loads from this repo's raw URL.
+**Google Colab (primary):** click the **Open In Colab** badge above, set Colab secrets or edit the config cell — `WORKSHOP_MODE=gateway`, your seat key as `LITELLM_API_KEY` (from the view-only key sheet on your desk card) — then run top to bottom. No Kaggle auth, no uploads: the data loads from this repo's raw URL. No Google account? Use the Codespaces or Binder badge above (GitHub account / no account at all respectively), or clone and run locally.
 
 **Local / Codespaces:** open the repo, `pip install -r requirements.txt`, set `WORKSHOP_MODE` and run the notebook. Falls back to `data/transactions.csv` on disk.
 

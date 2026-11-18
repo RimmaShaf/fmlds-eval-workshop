@@ -25,7 +25,9 @@ def code(src, tags=()):
 
 cells = []
 
-cells.append(md("""# Evaluating AI-Assisted Data Science Workflows
+cells.append(md("""[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/RimmaShaf/fmlds-eval-workshop/blob/main/workshop.ipynb)
+
+# Evaluating AI-Assisted Data Science Workflows
 ### Building a Financial Agent, Uncovering Silent Failures, and Implementing Automated Evals
 
 **Workshop objective:** build a Python AI agent that analyzes personal bank transactions, discover why LLMs make *silent* mistakes on data science tasks, and replace subjective "vibe-checking" with rigorous, automated evaluations (evals) that catch regressions before code ships.
@@ -62,7 +64,7 @@ cells.append(code(r'''import os
 WORKSHOP_MODE = os.getenv("WORKSHOP_MODE", "gateway")
 assert WORKSHOP_MODE in {"gateway", "direct", "mock"}, "WORKSHOP_MODE must be gateway, direct or mock"
 
-GATEWAY_URL = os.getenv("LITELLM_BASE_URL", "https://your-tokyo-proxy.fly.dev/v1")
+GATEWAY_URL = os.getenv("LITELLM_BASE_URL", "https://fmlds-eval-workshop-gateway.fly.dev/v1")
 DIRECT_URL = "https://api.openai.com/v1"
 ACTIVE_BASE_URL = {"gateway": GATEWAY_URL, "direct": DIRECT_URL, "mock": None}[WORKSHOP_MODE]
 
@@ -72,7 +74,7 @@ MAGIC_MODEL = "gpt-4o"
 MAX_TOKENS = 1500
 MAX_TOOL_CALLS = 6
 
-DATA_URL = os.getenv("WORKSHOP_DATA_URL", "https://raw.githubusercontent.com/YOUR-ORG/fmlds-eval-workshop/main/data/transactions.csv")
+DATA_URL = os.getenv("WORKSHOP_DATA_URL", "https://raw.githubusercontent.com/RimmaShaf/fmlds-eval-workshop/main/data/transactions.csv")
 GOLDEN_URL = DATA_URL.rsplit("/", 1)[0] + "/golden_eval_cases.json"
 LOCAL_DATA = "data/transactions.csv"
 LOCAL_GOLDEN = "data/golden_eval_cases.json"

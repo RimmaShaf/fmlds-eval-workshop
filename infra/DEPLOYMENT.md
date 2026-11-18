@@ -8,6 +8,36 @@ this workshop, or anyone building the same stack: LiteLLM proxy on Fly.io
 
 **Read Phase 0 before spending any money or pasting any secret.**
 
+> **Field-tested 2026-11-18.** This runbook was executed end-to-end (Supabase
+> Tokyo + Fly `nrt`, one machine, health check passing, pilot seat keys issued).
+> Every ⚠️ marks a real failure that occurred during that run, with the fix that
+> worked. Expect the whole thing in ~2 hours, most of it human account setup.
+
+## Division of labor — what the human does vs what the agent does
+
+The split follows one principle: **the human owns money, accounts, and
+credential creation; the agent owns everything mechanical in between — and
+never echoes a secret into the chat transcript.**
+
+| Task | Human | Agent (OpenCode) |
+|---|---|---|
+| Create accounts, enable 2FA, billing forms, tax-ID | ✅ all of it | — |
+| Supabase project, Tokyo region, DB password | ✅ | — |
+| Generate master key, store in password manager | ✅ (generate + store) | can run `openssl rand -hex 24` but should not be the custodian |
+| Buy OpenAI API credits, set project spend cap | ✅ (money) | — |
+| `fly secrets set` values | ✅ paste, or drop into gitignored `.env` | runs the command; reads key from `.env` if asked; never prints values |
+| Edit `fly.toml`, `.dockerignore`, docs, notebook builder | — | ✅ |
+| `fly launch` / `deploy` / `logs` / `status` / `scale count` | — | ✅ (flyctl auth is shared on the machine) |
+| Generate seat keys (`make_seat_keys.py`) | provides `LITELLM_MASTER_KEY` via env | ✅ runs script |
+| Smoke-test a seat key | — | ✅ reads key from gitignored CSV into a shell variable — value never appears in output |
+| Verify Prisma/health/one-machine state | — | ✅ |
+| Repo edits, Colab badge, eval gate, gitleaks scan, `git push` | approves repo name + visibility | ✅ |
+| Teardown decisions (destroy app, delete DB, revoke keys) | ✅ decides | ✅ runs the commands |
+
+Handoff pattern that worked: human does the clicks and payments in browser
+tabs, tells the agent "done", agent verifies from the terminal (curl / fly
+logs / config show) and moves to the next phase.
+
 ---
 
 ## Architecture
@@ -63,10 +93,23 @@ blank. If you're in Japan, never enter your 個人番号 (My Number) there; that
 for Japanese tax administration, not foreign SaaS billing. Business accounts
 use the 13-digit 法人番号 (corporate number).
 
-**OpenAI key:** create a *dedicated OpenAI Project* and generate the API key
-inside it, with a **hard spend limit (~$60)** on the project. This gives caps
-at two independent layers — OpenAI project limit (room-wide) and LiteLLM
-per-key budget ($2/seat) — so no single misconfiguration can drain an account.
+**OpenAI key — two separate knobs, both yours to set:**
+
+1. **Credits (the wallet).** platform.openai.com → Settings → **Billing → Buy
+   credits** (~$20 covers the workshop's $5–25 expected spend; worst case $100).
+   ⚠️ **Prepaid and separate from everything else**: a ChatGPT (Plus) subscription
+   includes **zero** API usage. If the gateway returns
+   `429 — You have no credits remaining`, this knob is the fix — nothing about
+   the gateway, keys, or code is wrong.
+2. **Project spend cap (the ceiling).** Create a *dedicated OpenAI Project*,
+   generate the API key inside it, and set a **hard spend limit (~$60)** on the
+   project (Settings → Rate limits / project settings). This is a *different
+   setting* from buying credits — credits are what you've paid, the cap is the
+   automatic stop.
+
+This gives caps at two independent layers — OpenAI project limit (room-wide)
+and LiteLLM per-key budget ($2/seat) — so no single misconfiguration can drain
+an account.
 
 **Secrets inventory (exactly four — put them in a password manager now):**
 
@@ -227,11 +270,16 @@ LITELLM_PROXY_URL=https://fmlds-eval-workshop-gateway.fly.dev \
 LITELLM_MASTER_KEY=sk-... \
   .venv/bin/python scripts/make_seat_keys.py --seats 2 --out infra/seat_keys_pilot.csv
 
-# 3. Smoke-test one key (replace <KEY> with a value from the CSV)
+# 3. Smoke-test seat 01 — the key travels CSV → shell variable → header,
+#    and is never printed to screen or transcript
+KEY=$(awk -F, 'NR==2 {print $3}' infra/seat_keys_pilot.csv) && \
 curl https://fmlds-eval-workshop-gateway.fly.dev/v1/chat/completions \
-  -H "Authorization: Bearer <KEY>" \
+  -H "Authorization: Bearer $KEY" \
   -H "Content-Type: application/json" \
   -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"ping"}],"max_tokens":5}'
+# expected: a JSON chat completion. A 429 "no credits remaining" → Phase 0,
+# credits knob (see troubleshooting table). Any auth error → the key didn't
+# make it into the DB (check Prisma line in fly logs).
 
 # 4. All 50
 LITELLM_PROXY_URL=https://fmlds-eval-workshop-gateway.fly.dev \
@@ -244,8 +292,12 @@ Paste the CSV rows into the **view-only** Google Sheet; desk cards
 (`seat_keys*.csv`) — never commit, never screenshot it.
 
 Every seat key carries three self-destruct axes if leaked: **$2 budget,
-15 RPM, 7-day expiry**. Reserve pool for the emergency kit:
-`make_seat_keys.py --seats 5 --budget 5`.
+15 RPM, 7-day expiry**. RPM = requests per minute, enforced per key by
+LiteLLM server-side — it's the anti-runaway-loop brake: a stuck tool-calling
+agent can't exceed 15 LLM requests in any window (request #16 gets a `429`
+until it frees up), and one greedy notebook can't starve the other 49 seats.
+Tune at creation with `--rpm`; instructor demo/master-pool keys can take ~30.
+Reserve pool for the emergency kit: `make_seat_keys.py --seats 5 --budget 5`.
 
 The LiteLLM admin UI at `/ui` is gated by the master key — never share it,
 not even with TAs; that's what seat keys are for.
@@ -289,6 +341,8 @@ In this order:
 | `fly status` shows empty `CHECKS`, no health monitoring | `[[http_service.http_checks]]` is **not a valid key** in current fly.toml — flyctl silently drops unknown sections, so it never errored, it just vanished | use `[[http_service.checks]]` with `path`/`method`/`interval`/`timeout`/`grace_period` (committed in `infra/fly.toml`) |
 | Health check fails right after deploy, machine shows "unhealthy" | check fired during boot: LiteLLM binds port 8080 only after Prisma prep + migrations (~30–60 s) | `grace_period = "60s"` — already set |
 | Two machines running, double the cost | repeated deploys each added a machine instead of replacing | `fly scale count 1 -c infra/fly.toml --yes` |
+| Smoke test: `429 — You have no credits remaining` (wrapped by LiteLLM as `throttling_error`) | OpenAI org has zero API credit — the gateway, seat key, and routing are all working; only the wallet is empty | platform.openai.com → Settings → Billing → Buy credits (~$20). ChatGPT Plus doesn't help: subscriptions include no API usage |
+| Smoke test: auth error on the seat key | key not persisted — Prisma/DB issue | confirm `Prisma DB Connected` in `fly logs`; check Supabase project isn't paused |
 | Fly billing demands tax ID | "Business" account type selected | Individual → field becomes optional |
 | Can't find 2FA on Fly | it's per-user | avatar → Account → 2FA |
 

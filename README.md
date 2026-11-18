@@ -47,6 +47,8 @@ infra/fly.toml, infra/Dockerfile  Tokyo (nrt) deployment
 
 ## Instructor / ops runbook
 
+> **Full step-by-step deployment guide with every gotcha we hit: [`infra/DEPLOYMENT.md`](infra/DEPLOYMENT.md)** — accounts/2FA, Supabase (Tokyo), Fly app, secrets, seat keys, workshop-day checklist, teardown, and a troubleshooting table.
+
 **1. Deploy the gateway (Tokyo region):**
 
 ```bash

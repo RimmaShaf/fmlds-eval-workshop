@@ -33,7 +33,11 @@ jobs:
           python-version: "3.11"
       - run: pip install -r requirements.txt nbformat
       - name: Golden suite gate (baseline agent, live model)
-        if: ${{ secrets.OPENAI_API_KEY != '' }}
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: python scripts/run_evals.py --mode direct --config baseline --min-pass-rate 0.8
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "OPENAI_API_KEY secret not set - skipping live eval"
+            exit 0
+          fi
+          python scripts/run_evals.py --mode direct --config baseline --min-pass-rate 0.8

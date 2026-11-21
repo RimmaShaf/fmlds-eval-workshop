@@ -17,14 +17,14 @@
 ## The story in 60 seconds
 
 1. **Notebook 1 — Build your Agent** — a hand-rolled tool-calling agent (schema lookup, guarded pandas REPL, financial rules) with a naive one-line system prompt. It fails silently on: sign/polarity inversion, merchant string fragmentation (`STARBUCKS #1042` vs `== "Starbucks"`), and schema hallucination (`merchant_city` does not exist).
-2. **Notebook 2 — Tracing with Phoenix** — observability reveals what actually happened: first with a hand-rolled 30-line TraceCollector, then with a real OpenTelemetry stack running *inside each participant's notebook* — tool cascades, retry bloat, token burn, and the "Mind Reader" sycophancy game.
+2. **Notebook 2 — Tracing with Phoenix** — observability reveals what actually happened: first by reading the runs' own event logs (waterfall, token leaderboard), then with a real OpenTelemetry stack running *inside each participant's notebook* — tool cascades, retry bloat, token burn, and the "Mind Reader" sycophancy game.
 3. **Notebook 3 — Evaluations** — a 10-case golden suite with frozen programmatic ground truth: execution checks (AST, no traceback), **router checks** (did the model call the right tool), numeric ground-truth matches, and an LLM-as-judge rubric. Baseline hardened agent: **9/10**. Inject a "creative & conversational" prompt + `temperature=0.7`: **6/10**, caught automatically — and the same suite runs as the CI gate.
 
 ## Repo map
 
 ```
 01_build_your_agent.ipynb      notebook 1: config, tools, the router loop, the three traps
-02_tracing_with_phoenix.ipynb  notebook 2: TraceCollector -> local Phoenix -> Mind Reader -> publish to board
+02_tracing_with_phoenix.ipynb  notebook 2: event logs -> local Phoenix -> Mind Reader -> publish to board
 03_evaluations.ipynb           notebook 3: golden suite, router checks, regression gate, beat-9/10, CI
 utils.py                       canonical agent + eval harness (GENERATED; imported by notebooks 2-3 and CI)
 data/transactions.csv           synthetic ledger, 508 rows, May–Oct 2026 (seed 42)

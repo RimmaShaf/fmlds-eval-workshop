@@ -40,6 +40,7 @@ def main() -> int:
     import utils
 
     utils.load_data()
+    utils.load_golden()
 
     if args.mode == "gateway":
         if not os.getenv("LITELLM_API_KEY"):
@@ -52,7 +53,12 @@ def main() -> int:
             return 2
 
     label, prompt_key, temperature = CONFIGS[args.config]
-    scorecard = utils.run_suite(label, getattr(utils, prompt_key), temperature)
+    if args.mode == "mock":
+        # Deterministic CI twin: inject the canned agent + judge into the same harness
+        scorecard = utils.run_suite(label, getattr(utils, prompt_key), temperature,
+                                    agent_fn=utils.mock_agent, judge_fn=utils.mock_judge)
+    else:
+        scorecard = utils.run_suite(label, getattr(utils, prompt_key), temperature)
 
     rows = scorecard.to_dict(orient="records")
     passed = int(scorecard["PASS"].sum())

@@ -70,10 +70,6 @@ def load_data():
         df["date"] = pd.to_datetime(df["date"])
         print(f"loaded {len(df)} transactions ({source})")
     return df
-
-
-def _ensure_data():
-    load_data()
 '''
 
 F_REGISTRY = r'''TOOLS = {}
@@ -158,7 +154,7 @@ EXEC_LOG = []
 def execute_python_code(code_str):
     """Run a snippet in a stateful namespace holding df, pd, np, plt, sns.
     Stdout, tracebacks and figures are captured and returned to the model."""
-    _ensure_data()
+    load_data()
     _AGENT_NS.update({"df": df, "pd": pd, "np": np, "plt": plt, "sns": sns})
     blocked = _guard(code_str)
     if blocked:
@@ -300,7 +296,7 @@ F_RUN_AGENT = r'''def run_agent(query, system_prompt=NAIVE_SYSTEM_PROMPT, temper
     Every LLM call and tool dispatch is appended to `events` (latency, tokens,
     errors) - notebook 2 turns that log into a real tracing view.
     """
-    _ensure_data()
+    load_data()
     model = model or AGENT_MODEL
     label = label or query[:48]
     events = []
@@ -559,11 +555,6 @@ def load_golden():
         GOLDEN = _load_json(GOLDEN_URL, LOCAL_GOLDEN)
         print(f"loaded {len(GOLDEN['cases'])} golden eval cases, date range {GOLDEN['date_range']}")
     return GOLDEN
-
-
-def _ensure_golden():
-    if globals().get("GOLDEN") is None:
-        load_golden()
 '''
 
 F_MOCK = r'''# ---------------------------------------------------------------------------
@@ -610,8 +601,8 @@ _CODE_OK = lambda code: {"code": code, "ok": True, "stderr": ""}
 
 
 def mock_agent(query, system_prompt=NAIVE_SYSTEM_PROMPT, temperature=0.0, model=None, label=None, max_tool_calls=MAX_TOOL_CALLS):
-    _ensure_data()
-    _ensure_golden()
+    load_data()
+    load_golden()
     model = model or AGENT_MODEL
     label = label or query[:48]
     style = _mock_style(system_prompt)

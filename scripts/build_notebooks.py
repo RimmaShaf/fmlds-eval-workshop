@@ -887,9 +887,8 @@ nb1_cells.append(md(f"""{badge("01_build_your_agent.ipynb")}
 Notebook **1 of 3**. Notebook 2 traces what the agent actually did; notebook 3 replaces
 vibes with an automated eval suite.
 
-**How to run:** top to bottom, one concept per cell. Your seat key goes in the
-`LITELLM_API_KEY` Colab secret (🔑 sidebar - remember to switch **Notebook access**
-on in each notebook) - or paste it when asked.
+**How to run:** top to bottom, one concept per cell. When the connect cell asks for
+your workshop key, paste it (from the view-only key sheet on your desk card).
 """))
 
 nb1_cells.append(md("""---
@@ -908,17 +907,8 @@ from openai import OpenAI, AuthenticationError
 GATEWAY_URL = "https://fmlds-eval-workshop-gateway.fly.dev/v1"
 AGENT_MODEL = "gpt-4o-mini"
 
-# key resolution: Colab secret (🔑 sidebar, "Notebook access" ON) -> paste when asked.
-# (The env-var path for CI/scripts lives in utils.connect, not here.)
-key = ""
-try:
-    from google.colab import userdata
-    key = (userdata.get("LITELLM_API_KEY") or "").strip()
-except Exception:
-    pass
-key = key or getpass("Paste your workshop API key: ")
-
-client = OpenAI(api_key=key.strip().strip("'\""), base_url=GATEWAY_URL)
+client = OpenAI(api_key=getpass("Paste your workshop API key: ").strip().strip("'\""),
+                base_url=GATEWAY_URL)
 
 try:
     t0 = time.time()

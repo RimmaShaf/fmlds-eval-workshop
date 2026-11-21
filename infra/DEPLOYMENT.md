@@ -422,9 +422,11 @@ The only thing that cannot be verified from the repo itself is the real Colab
 experience. Run all three notebooks end-to-end as a participant would.
 
 **Prep (2 min):** a pilot seat key; the board values (`PHOENIX_BOARD_URL`,
-`PHOENIX_API_KEY` from `infra/phoenix_board.key`). In Colab, add all three as
-secrets (🔑 icon) — secrets are account-scoped, so **set them once and all
-three notebooks see them**.
+`PHOENIX_API_KEY` from `infra/phoenix_board.key`). The connect cells prompt for
+the seat key — paste it once per notebook (one paste per runtime session).
+Optional zero-paste setup: set the three as Colab secrets (🔑 panel, switch
+**Notebook access** on in each notebook) — notebooks 2–3 read them automatically
+via `utils.get_secret`.
 
 **Fast structural pass first (optional, 5 min):** set a `WORKSHOP_MODE=mock`
 secret, run all three notebooks top to bottom. Validates badges, bootstrap,
@@ -462,7 +464,7 @@ secret and do the live pass.
 | Publish cell 401 | `PHOENIX_API_KEY` secret missing/typo (the board has auth ON) |
 | Publish "duplicate spans" | you already published from this runtime — expected on re-runs |
 | 429s during the suite | 15 RPM seat cap doing its job — wait ~30 s and re-run the cell |
-| Connect cell always prompts although the secret is set | Colab secrets are **not** environment variables, and "Notebook access" is per-notebook | switch the toggle on for *this* notebook in the 🔑 panel; the cells read secrets via `google.colab.userdata` (env var → Colab secret → prompt) |
+| Notebooks 2/3 still prompt although a Colab secret is set | Colab secrets are **not** environment variables, and "Notebook access" is per-notebook; notebook 1's paste prompt is by design | for the optional zero-paste setup, switch the toggle on for *that* notebook — `utils.get_secret` reads it via `google.colab.userdata` |
 
 ---
 

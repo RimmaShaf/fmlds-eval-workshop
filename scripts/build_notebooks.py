@@ -955,11 +955,22 @@ any pandas code.
 nb1_cells.append(code(F_REGISTRY, ("core",)))
 
 nb1_cells.append(md("""---
-## Tool 2 - `execute_python_code` (guarded pandas REPL)
+## Tool 2 - `execute_python_code`: the agent's hands
 
-Two cells: first the **guardrail** (an AST scan that blocks imports and dangerous
-builtins - because we are not monsters), then the **executor** (a stateful namespace
-holding `df`, capturing stdout/tracebacks/figures).
+This is the tool that makes it an *agent*: the model writes pandas code, this tool runs it.
+
+One problem: we are about to execute code written by a language model. Two cells handle it:
+
+**The guard** - before anything runs, the model's code is parsed and checked (but not
+executed): imports like `os` / `subprocess` / `requests` and dangerous builtins like
+`open` / `eval` are rejected. The rejection goes back to the model as a normal tool
+result - like a code review, so it can rewrite its code and try again.
+
+**The executor** - runs the approved snippet in a workspace that already contains `df`
+(plus pandas, numpy, matplotlib, seaborn), keeps variables between calls, and returns
+to the model: what the code printed, any traceback, and how many charts it drew.
+The model seeing its own errors and retrying is the "retry bloat" you will watch in
+failure #3.
 """))
 
 nb1_cells.append(code(F_GUARD, ("core",)))
@@ -983,6 +994,14 @@ baseline "vibe-coded" agent. (The hardened and creative prompts arrive in notebo
 """))
 
 nb1_cells.append(code(F_PROMPT_NAIVE, ("core",)))
+
+nb1_cells.append(md("""---
+## A socket for later (you can skip these 3 lines)
+
+Notebook 2 will plug a tracer into this socket to watch the agent live. Today these
+helpers do nothing at all. Real production code carries hooks like this so
+observability can be added later without rewriting the app.
+"""))
 
 nb1_cells.append(code(F_SPAN_HOOKS, ("core",)))
 

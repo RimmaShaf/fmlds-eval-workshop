@@ -15,6 +15,7 @@ model_list:
       api_key: os.environ/OPENAI_API_KEY
 
 litellm_settings:
+  callbacks: ["arize_phoenix"]
   drop_params: true
   request_timeout: 60
   num_routes_in_cache: 0

@@ -12,6 +12,11 @@ primary_region = 'nrt'
 
 [env]
   PORT = '8080'
+  # OpenTelemetry v2 tracing -> the Phoenix board (central observability).
+  # Every request through the gateway becomes a trace, tagged per seat key.
+  LITELLM_OTEL_V2 = 'true'
+  PHOENIX_COLLECTOR_HTTP_ENDPOINT = 'https://fmlds-eval-workshop-phoenix.fly.dev/v1/traces'
+  PHOENIX_PROJECT_NAME = 'gateway'
 
 [http_service]
   internal_port = 8080

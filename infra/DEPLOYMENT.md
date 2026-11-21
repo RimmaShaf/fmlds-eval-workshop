@@ -29,6 +29,8 @@ never echoes a secret into the chat transcript.**
 | Edit `fly.toml`, `.dockerignore`, docs, notebook builder | — | ✅ |
 | `fly launch` / `deploy` / `logs` / `status` / `scale count` | — | ✅ (flyctl auth is shared on the machine) |
 | Generate seat keys (`make_seat_keys.py`) | provides `LITELLM_MASTER_KEY` via env | ✅ runs script |
+| Deploy the Phoenix board + mint system API keys (Phase 4b) | — | ✅ runs the whole chain (secrets stay in memory / Fly) |
+| Set the board admin UI password, distribute board values to desk cards | ✅ (credentials + distribution) | — |
 | Smoke-test a seat key | — | ✅ reads key from gitignored CSV into a shell variable — value never appears in output |
 | Verify Prisma/health/one-machine state | — | ✅ |
 | Repo edits, Colab badge, eval gate, gitleaks scan, `git push` | approves repo name + visibility | ✅ |
@@ -47,13 +49,16 @@ logs / config show) and moves to the next phase.
         │  seat key (sk-…, $2 cap, 15 RPM, 7d expiry)
         ▼
  LiteLLM gateway — Fly.io app "fmlds-eval-workshop-gateway"
-        │  https://<app>.fly.dev/v1   (region nrt, Tokyo)
+        │  https://fmlds-eval-workshop-gateway.fly.dev/v1   (region nrt, Tokyo)
         │        │
         │        ├──> OpenAI api.openai.com   (project key, hard spend limit)
         │        └──> Supabase Postgres       (keys, budgets, spend logs)
         │              aws-0-ap-northeast-1.pooler.supabase.com  (Tokyo)
-        ▼
- Instructor: /key/generate via LITELLM_MASTER_KEY → seat_keys.csv →
+        │        │
+        │        └──> Phoenix board — Fly.io app "fmlds-eval-workshop-phoenix"
+        │              server-side trace capture, every request, tagged per seat
+        ▼                (participants' full span trees arrive via notebook 2's
+ Instructor: /key/generate via LITELLM_MASTER_KEY → seat_keys.csv →     optional publish cell)
  view-only Google Sheet → desk cards
 ```
 
@@ -65,7 +70,8 @@ only ever see the gateway URL and their own seat key.
 | Item | Cost | Notes |
 |---|---|---|
 | Supabase Free (Postgres) | **$0** | Tokyo region, 500 MB — LiteLLM tables are < 1 MB for one workshop |
-| Fly machine (shared-1x, 1 GB, always-on) | ~$5–8/mo | `auto_stop_machines = off` so no cold starts on workshop day |
+| Fly machine (shared-1x, 1 GB, always-on) — gateway | ~$5–8/mo | `auto_stop_machines = off` so no cold starts on workshop day |
+| Fly machine (shared-1x, 1 GB, always-on) — Phoenix board | ~$5–8/mo | central observability; SQLite on a 3 GB volume, ~30k spans/day is trivial |
 | Fly Managed Postgres (if chosen instead of Supabase) | $38/mo + $0.28/GB | not worth it for a 1-day workshop |
 | OpenAI usage | ~$5–25 actual, $100 worst case | 50 seats × $2 hard cap |
 
@@ -304,11 +310,119 @@ not even with TAs; that's what seat keys are for.
 
 ---
 
+## Phase 4b — The Phoenix board (room-wide observability)
+
+A second Fly app, **fmlds-eval-workshop-phoenix** (Tokyo, next to the gateway),
+collecting traces from two directions:
+
+1. **Server-side (automatic):** the gateway's `arize_phoenix` callback ships
+   every request — full trace tree (HTTP → auth → LLM call → DB writes), tagged
+   with `litellm.metadata.user_api_key_alias` = the seat alias. Zero participant
+   setup; this is what the projector shows.
+2. **Client-side (opt-in):** notebook 2's last cell publishes the participant's
+   own instrumented CHAIN/TOOL span tree to project `seat-<tag>` (tag derived
+   from their seat key, no user input).
+
+### Deploy (agent can do all of this)
+
+```bash
+fly launch --config infra/phoenix.toml --no-deploy
+fly volumes create phoenix_data --app fmlds-eval-workshop-phoenix --region nrt --size 3 --yes
+fly deploy -c infra/phoenix.toml
+curl https://fmlds-eval-workshop-phoenix.fly.dev/healthz     # → "OK"
+```
+
+⚠️ **Version lockstep gotcha:** the Docker image and the pip package have
+*different version lines*. A Python 3.9 venv resolves `arize-phoenix` 12.x,
+but the image tags jump to `version-22.x` — there is **no** `version-12.15.1`
+image. Colab runs Python 3.11+, where pip gives 22.x. Everything is pinned to
+**22.0.0** in lockstep: the image in `infra/phoenix.toml` and the notebook 2
+pip cell. Do not "upgrade" one without the other.
+
+⚠️ **Auth is ON by default** (the Docker image binds a non-loopback host, and
+auth follows the bind address). Everything returns `401 Invalid token` until
+you mint a system API key. Keep it that way — it's the right posture for a
+public URL.
+
+### Mint the system API keys (the PHOENIX_ADMIN_SECRET dance)
+
+Fly secrets are **write-only** — you cannot read a value back, so the whole
+chain must run in ONE process: generate the admin secret → set it → use it →
+remove it. Do not paste the key values anywhere; they go straight into Fly
+secrets / the gitignored key file.
+
+```python
+# /opt/homebrew/bin/python3.12 (any python works; run from the repo root)
+import json, secrets, subprocess, time, urllib.request
+BOARD = "https://fmlds-eval-workshop-phoenix.fly.dev"
+
+def fly(*a): return subprocess.run(["fly", *a], capture_output=True, text=True, check=True).stdout
+
+admin = "admin-" + secrets.token_hex(24)
+fly("secrets", "set", "-c", "infra/phoenix.toml", f"PHOENIX_ADMIN_SECRET={admin}")
+# ...wait for healthz to return OK (the app restarts), then:
+req = urllib.request.Request(
+    f"{BOARD}/v1/system/api_keys",
+    data=json.dumps({"data": {"name": "workshop-board-2"}}).encode(),   # ⚠️ body wraps in "data"
+    headers={"Authorization": f"Bearer {admin}", "Content-Type": "application/json"},
+    method="POST")
+key = json.loads(urllib.request.urlopen(req, timeout=60).read())["data"]["key"]  # ⚠️ field is "key"
+fly("secrets", "set", "-c", "infra/fly.toml", f"PHOENIX_API_KEY={key}")          # gateway → board
+fly("secrets", "unset", "-c", "infra/phoenix.toml", "PHOENIX_ADMIN_SECRET")      # remove it again
+```
+
+Gotchas packed in there: the request body must be `{"data": {...}}` (422
+otherwise); the response field is `key` (not `api_key`); the key is shown
+**once**; `PHOENIX_SECRET` (JWT signing) must already be set or the admin
+secret is rejected. Mint a second key the same way for participants and save
+it to `infra/phoenix_board.key` (gitignored via `*.key`) — that value goes on
+the desk cards as the `PHOENIX_API_KEY` Colab secret.
+
+### Wire the gateway (already committed)
+
+- `infra/litellm_config.yaml`: `litellm_settings.callbacks: ["arize_phoenix"]`
+- `infra/fly.toml` `[env]`: `LITELLM_OTEL_V2 = "true"`,
+  `PHOENIX_COLLECTOR_HTTP_ENDPOINT = "https://fmlds-eval-workshop-phoenix.fly.dev/v1/traces"`,
+  `PHOENIX_PROJECT_NAME = "gateway"`
+- `PHOENIX_API_KEY` as a gateway Fly secret (from the mint above)
+- `fly deploy -c infra/fly.toml`
+
+### Verify (5 minutes, do this before the workshop)
+
+1. Fire one pilot-key request through the gateway; within ~10 s the board's
+   `gateway` project shows a trace whose spans carry
+   `litellm.metadata.user_api_key_alias: "seat-01"`.
+2. Run notebook 2's publish path once (locally or in Colab) with the desk-card
+   `PHOENIX_BOARD_URL` + `PHOENIX_API_KEY`; project `seat-<tag>` appears with
+   the full CHAIN/TOOL tree.
+3. Log into the board UI — see the human task below — and confirm the
+   projector view filters by seat alias.
+
+### Human tasks for this phase
+
+- **Set the admin password.** First UI login is `admin@localhost` / `admin`,
+  and Phoenix prompts you to change it. Choose a real password, store it in
+  your password manager — this is the instructor's board UI credential.
+- **Desk cards:** each card carries (a) the key-sheet short URL, (b) the board
+  values for notebook 2's optional publish cell: `PHOENIX_BOARD_URL`
+  (`https://fmlds-eval-workshop-phoenix.fly.dev`) and `PHOENIX_API_KEY` (the
+  participants key from `infra/phoenix_board.key`).
+
+⚠️ **Why the publish cell remaps span ids:** the notebook tracer generates
+*deterministic* ids — every seat running the same cells produces identical
+span ids, and the board enforces global id uniqueness. Without the per-seat
+remap (md5 of seat-tag + old id, parents included), only the first publisher
+in the room would succeed. The remap lives inside notebook 2's publish cell.
+
+---
+
 ## Phase 5 — Workshop day
 
 - [ ] **Day before:** unpause the Supabase project, `fly status -c infra/fly.toml`,
       one live smoke test, charge the 5 mobile hotspots
-- [ ] Desk cards printed with seat numbers + key-sheet URL
+- [ ] Board verification checklist (Phase 4b) green — projector shows the board
+- [ ] Desk cards printed with seat numbers, key-sheet URL, and the board
+      `PHOENIX_BOARD_URL` / `PHOENIX_API_KEY` values
 - [ ] View-only Google Sheet shared (link, view-only — not "anyone can edit")
 - [ ] Projector: instructor notebook using the workshop gateway
 
@@ -319,8 +433,9 @@ not even with TAs; that's what seat keys are for.
 In this order:
 
 1. Delete the Google Sheet (kills the shared key surface)
-2. `rm infra/seat_keys*.csv` (all copies: pilot + production)
-3. `fly apps destroy fmlds-eval-workshop-gateway` (+ `fly apps list` to confirm)
+2. `rm infra/seat_keys*.csv infra/phoenix_board.key` (all copies: pilot + production + board key)
+3. `fly apps destroy fmlds-eval-workshop-gateway` and
+   `fly apps destroy fmlds-eval-workshop-phoenix` (+ `fly apps list` to confirm)
 4. Delete the Supabase project
 5. Revoke the OpenAI project key
 6. (Optional) remove the 2FA you added if these accounts are single-purpose —
@@ -344,13 +459,25 @@ In this order:
 | Smoke test: `429 — You have no credits remaining` (wrapped by LiteLLM as `throttling_error`) | OpenAI org has zero API credit — the gateway, seat key, and routing are all working; only the wallet is empty | platform.openai.com → Settings → Billing → Buy credits (~$20). ChatGPT Plus doesn't help: subscriptions include no API usage |
 | Smoke test: auth error on the seat key | key not persisted — Prisma/DB issue | confirm `Prisma DB Connected` in `fly logs`; check Supabase project isn't paused |
 | Fly billing demands tax ID | "Business" account type selected | Individual → field becomes optional |
+| Board returns `401 Invalid token` for everything | Phoenix 22 Docker image enables auth by default (non-loopback bind) | expected — mint a system API key via the `PHOENIX_ADMIN_SECRET` chain (Phase 4b); participants' publish cell sends it as `PHOENIX_API_KEY` |
+| `POST /v1/system/api_keys` → 422 "Field required: data" | request body must wrap in a `data` object | `{"data": {"name": "..."}}` |
+| System-key response has no `api_key` field | the response field is `key`, and the value is shown **once** | parse `data.key`; if you lose it, mint a new key (old one can't be retrieved) |
+| Phoenix image tag `version-12.15.1` doesn't exist | Docker image and pip package version lines differ; py3.9 pip resolves 12.x while images start at 22.x | pin **22.0.0** in lockstep: image `arizephoenix/phoenix:version-22.0.0` + notebook pip cell `arize-phoenix==22.0.0` |
+| `phoenix.client.Client(endpoint=...)` → TypeError | that was the old client; the new one takes `base_url` | `Client(base_url=..., api_key=...)` |
+| Participant publish rejected: "duplicate spans" | notebook tracer ids are deterministic — every seat emits identical ids; board enforces global uniqueness | notebook 2's publish cell remaps ids per seat (already built in) |
+| Local `get_spans` 404 on project X | project not created yet — spans not ingested (or `register()` defaulted to gRPC 4317, which the in-notebook session doesn't serve) | `register(endpoint="http://127.0.0.1:6006/v1/traces", protocol="http/protobuf")` — verified pattern, committed in notebook 2 |
 | Can't find 2FA on Fly | it's per-user | avatar → Account → 2FA |
 
 ## Security invariants (the short version)
 
-- **Intentionally public:** gateway URL, model allowlist, dataset, the repo itself.
-- **Never public:** master key, seat keys, OpenAI key, `DATABASE_URL`.
-- Secrets only ever live in: Fly secrets (gateway), env/Colab secrets
+- **Intentionally public:** gateway URL, board URL, model allowlist, dataset, the repo itself.
+- **Never public:** master key, seat keys, OpenAI key, `DATABASE_URL`, Phoenix
+  `PHOENIX_API_KEY`s, `infra/phoenix_board.key` (gitignored via `*.key`).
+- The Phoenix board has **auth enabled** (Phoenix 22 default); every client —
+  the gateway callback and participants' publish cell — authenticates with a
+  system API key. The `PHOENIX_ADMIN_SECRET` used to mint keys is removed from
+  the deployment immediately after use.
+- Secrets only ever live in: Fly secrets (gateway + board), env/Colab secrets
   (participants), password manager (you).
 - Spend is capped at two layers: $2/seat (LiteLLM, needs the DB) + the OpenAI
   project hard limit.

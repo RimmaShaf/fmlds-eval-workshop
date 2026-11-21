@@ -23,8 +23,8 @@ ROOT = Path(__file__).resolve().parents[1]
 REPO = "RimmaShaf/fmlds-eval-workshop"
 RAW = f"https://raw.githubusercontent.com/{REPO}/main"
 COLAB = f"https://colab.research.google.com/github/{REPO}/blob/main"
-PHOENIX_VERSION = "12.15.1"
-OPENINFERENCE_VERSION = "0.1.49"
+PHOENIX_VERSION = "22.0.0"
+OPENINFERENCE_VERSION = "0.1.76"
 
 NB1 = ROOT / "01_build_your_agent.ipynb"
 NB2 = ROOT / "02_tracing_with_phoenix.ipynb"
@@ -1466,7 +1466,8 @@ from the gateway (server-side capture - nothing you configured). That gives the 
 because that exists only in your runtime.
 
 This optional cell ships your local spans to the board so the instructor can project the full
-tree. Set the `PHOENIX_BOARD_URL` Colab secret / env var (on your desk card), then run:
+tree. Set the `PHOENIX_BOARD_URL` and `PHOENIX_API_KEY` Colab secrets / env vars (both on your
+desk card), then run:
 
 > **Why opt-in matters:** client-side instrumentation gives *rich* traces but depends on every
 > developer doing it; server-side capture gives *complete* traces with zero effort. Production
@@ -1481,8 +1482,9 @@ else:
     import os as _os
 
     board_url = _os.getenv("PHOENIX_BOARD_URL", "").strip()
+    board_api_key = _os.getenv("PHOENIX_API_KEY", "").strip()
     if not board_url:
-        print("Set the PHOENIX_BOARD_URL Colab secret / env var (desk card), then re-run.")
+        print("Set the PHOENIX_BOARD_URL and PHOENIX_API_KEY Colab secrets / env vars (desk card), then re-run.")
     else:
         try:
             from phoenix.client import Client
@@ -1513,7 +1515,7 @@ else:
                     out.append(s2)
                 return out
 
-            board = Client(base_url=board_url)
+            board = Client(base_url=board_url, api_key=board_api_key or None)
             result = board.spans.log_spans(project_identifier=f"seat-{SEAT}", spans=_remap_ids(local_spans, SEAT))
             print("published to the board:", result)
         except Exception as e:

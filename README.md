@@ -35,13 +35,11 @@ scripts/run_evals.py            headless CI twin of notebook 3 (imports utils.py
 scripts/make_seat_keys.py       instructor: 50 LiteLLM virtual keys, $2 caps
 infra/litellm_config.yaml       gateway model allowlist + settings
 infra/fly.toml, infra/Dockerfile  Tokyo (nrt) deployment
+infra/phoenix.toml              the Phoenix board (central observability, nrt)
 infra/DEPLOYMENT.md             field-tested gateway + board deployment runbook
-demo/                           local Ollama sycophancy website (FastAPI + React/Vite)
 .github/workflows/evals.yml     CI eval gate
 .devcontainer/                  Codespaces fallback for corporate laptops
 ```
-
-To run the local **Mind Reader** sycophancy website (Ollama player, per-turn trace judge, and mock replay), see [`demo/README.md`](demo/README.md).
 
 ## Participant quickstart
 

@@ -25,10 +25,8 @@ secrets*.json
 results/
 *.scorecard.json
 
-# Sycophancy demo frontend build artifacts
-demo/frontend/node_modules/
-demo/frontend/dist/
-demo/.phoenix/
+# Local-only sycophancy demo (Ollama website) - intentionally not part of the public repo
+demo/
 
 # Local planning material (schedule, syllabus, reference course) - not part of the public repo
 plans/

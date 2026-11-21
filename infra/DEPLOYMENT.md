@@ -416,6 +416,55 @@ in the room would succeed. The remap lives inside notebook 2's publish cell.
 
 ---
 
+## Phase 4c — Colab rehearsal (do this BEFORE the workshop; ~30–40 min live, ~5 min mock)
+
+The only thing that cannot be verified from the repo itself is the real Colab
+experience. Run all three notebooks end-to-end as a participant would.
+
+**Prep (2 min):** a pilot seat key; the board values (`PHOENIX_BOARD_URL`,
+`PHOENIX_API_KEY` from `infra/phoenix_board.key`). In Colab, add all three as
+secrets (🔑 icon) — secrets are account-scoped, so **set them once and all
+three notebooks see them**.
+
+**Fast structural pass first (optional, 5 min):** set a `WORKSHOP_MODE=mock`
+secret, run all three notebooks top to bottom. Validates badges, bootstrap,
+data loading, pip cell, suite mechanics — zero API spend. Then delete the mock
+secret and do the live pass.
+
+- [ ] **Notebook 1 (10 min, live):** open via the README badge → config cell
+      prints `mode=gateway` → deps auto-install → health check OK → data loads
+      **508 rows from the raw GitHub URL** → trap demos behave: polarity
+      (~$8k vs true $4,358.70), Starbucks ($0.00), location (KeyError +
+      fabricated answer) → verdicts print `SILENT FAILURE`
+- [ ] **Notebook 2 (10 min, live):** bootstrap fetches `utils.py` from the repo
+      → `%pip` installs phoenix 22.0.0 cleanly → `launch_app()` prints a
+      **Colab-proxied URL** (not localhost) → click it: empty project
+      `workshop-<tag>` → instrument → traced Starbucks run → UI shows one
+      trace with nested CHAIN/TOOL + LLM spans (token counts visible) → spans
+      dataframe prints → Mind Reader reveals the committed-vs-claimed color →
+      publish cell prints `published to the board` → board UI shows project
+      `seat-<tag>` with the tree
+- [ ] **Notebook 3 (15 min, live):** bootstrap → baseline suite (expect the 15
+      RPM seat cap to pace it to ~5 min — that's the realistic participant
+      experience; for a faster rehearsal use a `--rpm 60` pilot key) →
+      baseline ≈ 9/10 (live variance: 8–10 is normal, judges are stochastic —
+      if it dips below the 0.9 gate, re-run once before debugging) →
+      regression 6/10-ish → diff cell prints `REGRESSION DETECTED` →
+      `router_ok` column shows the mis-routing → optional: beat-9/10
+
+**If something breaks, likely causes:**
+| Symptom | Fix |
+|---|---|
+| Badge/notebook 404 on GitHub | filename typo in the badge URL — check the three badge links in README |
+| Data load falls back to local / fails | raw.githubusercontent propagation lag — wait 1 min, re-run; verify repo is public |
+| `%pip` cell version conflict | the pins (22.0.0 / 0.1.76) must match `PHOENIX_VERSION` in `scripts/build_notebooks.py` |
+| `launch_app()` URL is localhost | old phoenix version in the runtime — Runtime → Restart, re-run the pip cell |
+| Publish cell 401 | `PHOENIX_API_KEY` secret missing/typo (the board has auth ON) |
+| Publish "duplicate spans" | you already published from this runtime — expected on re-runs |
+| 429s during the suite | 15 RPM seat cap doing its job — wait ~30 s and re-run the cell |
+
+---
+
 ## Phase 5 — Workshop day
 
 - [ ] **Day before:** unpause the Supabase project, `fly status -c infra/fly.toml`,

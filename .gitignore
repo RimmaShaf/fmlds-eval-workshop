@@ -1,5 +1,6 @@
 # Python
 .venv/
+.venv-demo/
 __pycache__/
 *.pyc
 *.egg-info/
@@ -23,3 +24,11 @@ secrets*.json
 # Eval artifacts (regenerated locally / in CI)
 results/
 *.scorecard.json
+
+# Sycophancy demo frontend build artifacts
+demo/frontend/node_modules/
+demo/frontend/dist/
+demo/.phoenix/
+
+# Local planning material (schedule, syllabus, reference course) - not part of the public repo
+plans/

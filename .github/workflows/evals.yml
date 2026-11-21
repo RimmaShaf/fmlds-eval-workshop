@@ -15,7 +15,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install -r requirements.txt nbformat
+      - run: pip install -r requirements.txt
       - name: Dataset integrity (seed + frozen ground truths)
         run: python scripts/generate_dataset.py --check
       - name: Golden suite gate (baseline agent, mock mode)
@@ -31,13 +31,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install -r requirements.txt nbformat
+      - run: pip install -r requirements.txt
       - name: Golden suite gate (baseline agent, live model)
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          LITELLM_API_KEY: ${{ secrets.LITELLM_API_KEY }}
         run: |
-          if [ -z "$OPENAI_API_KEY" ]; then
-            echo "OPENAI_API_KEY secret not set - skipping live eval"
+          if [ -z "$LITELLM_API_KEY" ]; then
+            echo "LITELLM_API_KEY secret not set - skipping live eval"
             exit 0
           fi
-          python scripts/run_evals.py --mode direct --config baseline --min-pass-rate 0.8
+          python scripts/run_evals.py --mode gateway --config baseline --min-pass-rate 0.8

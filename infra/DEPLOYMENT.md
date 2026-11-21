@@ -310,7 +310,7 @@ not even with TAs; that's what seat keys are for.
       one live smoke test, charge the 5 mobile hotspots
 - [ ] Desk cards printed with seat numbers + key-sheet URL
 - [ ] View-only Google Sheet shared (link, view-only — not "anyone can edit")
-- [ ] Projector: instructor notebook with `WORKSHOP_MODE=gateway`
+- [ ] Projector: instructor notebook using the workshop gateway
 
 ---
 

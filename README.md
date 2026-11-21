@@ -6,6 +6,8 @@
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/RimmaShaf/fmlds-eval-workshop?quickstart=1)
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/RimmaShaf/fmlds-eval-workshop/main)
 
+*Colab: one click per notebook (Google account) · Codespaces: the full repo as a VS Code workspace (GitHub account) · Binder: no account at all.*
+
 **Building a Financial Agent, Uncovering Silent Failures, and Implementing Automated Evals** — a 3-hour hands-on masterclass. Participants build a Python AI agent over a synthetic bank ledger, watch it fail *silently* on three engineered traps, then replace vibe-checking with an automated eval suite that catches a deliberately injected regression.
 
 | | |

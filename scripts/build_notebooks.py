@@ -54,7 +54,9 @@ def badge(notebook):
 # Micro-fragments: cell-sized, shared between notebooks and utils.py.
 # =====================================================================
 
-F_DATA = r'''import pandas as pd
+F_DATA = r'''# utils.py-only plumbing: notebooks load df inline (plain top-level assignment);
+# imported-module contexts (notebooks 2-3 bootstrap, CI) call load_data() lazily.
+import pandas as pd
 
 
 def load_data():
@@ -154,7 +156,6 @@ EXEC_LOG = []
 def execute_python_code(code_str):
     """Run a snippet in a stateful namespace holding df, pd, np, plt, sns.
     Stdout, tracebacks and figures are captured and returned to the model."""
-    load_data()
     _AGENT_NS.update({"df": df, "pd": pd, "np": np, "plt": plt, "sns": sns})
     blocked = _guard(code_str)
     if blocked:
@@ -296,7 +297,6 @@ F_RUN_AGENT = r'''def run_agent(query, system_prompt=NAIVE_SYSTEM_PROMPT, temper
     Every LLM call and tool dispatch is appended to `events` (latency, tokens,
     errors) - notebook 2 turns that log into a real tracing view.
     """
-    load_data()
     model = model or AGENT_MODEL
     label = label or query[:48]
     events = []
@@ -601,8 +601,6 @@ _CODE_OK = lambda code: {"code": code, "ok": True, "stderr": ""}
 
 
 def mock_agent(query, system_prompt=NAIVE_SYSTEM_PROMPT, temperature=0.0, model=None, label=None, max_tool_calls=MAX_TOOL_CALLS):
-    load_data()
-    load_golden()
     model = model or AGENT_MODEL
     label = label or query[:48]
     style = _mock_style(system_prompt)
@@ -933,7 +931,19 @@ Note what the schema does **not** have: no merchant city, no location. Keep that
 for failure #3.
 """))
 
-nb1_cells.append(code(F_DATA + "\n\nload_data()\ndf.head()", ("core",)))
+nb1_cells.append(code(r'''import pandas as pd
+
+try:
+    df = pd.read_csv(DATA_URL)
+    source = "repo raw URL"
+except Exception:
+    df = pd.read_csv(LOCAL_DATA)
+    source = "local file"
+df["date"] = pd.to_datetime(df["date"])
+
+print(f"loaded {len(df)} transactions ({source})")
+df.head()
+''', ("core",)))
 
 nb1_cells.append(md("""---
 ## Tool 1 - `fetch_data_schema`

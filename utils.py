@@ -69,6 +69,8 @@ def set_span_tracer(tracer):
 
 
 
+# utils.py-only plumbing: notebooks load df inline (plain top-level assignment);
+# imported-module contexts (notebooks 2-3 bootstrap, CI) call load_data() lazily.
 import pandas as pd
 
 
@@ -172,7 +174,6 @@ EXEC_LOG = []
 def execute_python_code(code_str):
     """Run a snippet in a stateful namespace holding df, pd, np, plt, sns.
     Stdout, tracebacks and figures are captured and returned to the model."""
-    load_data()
     _AGENT_NS.update({"df": df, "pd": pd, "np": np, "plt": plt, "sns": sns})
     blocked = _guard(code_str)
     if blocked:
@@ -321,7 +322,6 @@ def run_agent(query, system_prompt=NAIVE_SYSTEM_PROMPT, temperature=0.0, model=N
     Every LLM call and tool dispatch is appended to `events` (latency, tokens,
     errors) - notebook 2 turns that log into a real tracing view.
     """
-    load_data()
     model = model or AGENT_MODEL
     label = label or query[:48]
     events = []
@@ -634,8 +634,6 @@ _CODE_OK = lambda code: {"code": code, "ok": True, "stderr": ""}
 
 
 def mock_agent(query, system_prompt=NAIVE_SYSTEM_PROMPT, temperature=0.0, model=None, label=None, max_tool_calls=MAX_TOOL_CALLS):
-    load_data()
-    load_golden()
     model = model or AGENT_MODEL
     label = label or query[:48]
     style = _mock_style(system_prompt)

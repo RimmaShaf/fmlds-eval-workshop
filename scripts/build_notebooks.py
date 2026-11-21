@@ -1029,20 +1029,6 @@ nb1_cells.append(code(F_DISPATCH, ("core",)))
 nb1_cells.append(code(display_src(F_RUN_AGENT), ("core",)))
 
 nb1_cells.append(md("""---
-## Answer extraction
-
-The hardened prompt (notebook 3) will force quantitative answers to end with a
-machine-checkable `FINAL ANSWER: <number>` line. That single convention turns free-form
-chat into **assertable output**.
-"""))
-
-nb1_cells.append(code(F_EXTRACT + '''
-
-probe = "You spent $4,358.70 in October.\\n\\nFINAL ANSWER: 4358.70"
-print("extraction probe ->", extract_final_number(probe))
-''', ("core",)))
-
-nb1_cells.append(md("""---
 ## Failure #1 - Polarity inversion (sign handling)
 
 Ask the naive agent for October expenses. Salary and refunds are **positive**, expenses
@@ -1062,12 +1048,12 @@ for c in demo1["executed_code"]:
     print(c["code"], "\n   ok:", c["ok"])
 
 truth1 = -df.loc[(df["date"].dt.month == 10) & (df["amount"] < 0), "amount"].sum()
-got1 = extract_final_number(demo1["answer"])
-print(f"\nground truth (sum of negative October amounts): {truth1:,.2f}")
-print(f"agent claimed: {got1}")
-print(f"October positive inflows it likely swallowed: {df.loc[(df['date'].dt.month == 10) & (df['amount'] > 0), 'amount'].sum():,.2f}")
-print("VERDICT:", "PASS" if got1 is not None and abs(abs(got1) - truth1) <= 0.01
-      else "SILENT FAILURE - the agent reported a number with total confidence, and it was wrong")
+classic_mistake = df.loc[df["date"].dt.month == 10, "amount"].abs().sum()
+print(f"\ntruth (sum of negative October amounts):   {truth1:,.2f}")
+print(f"the classic mistake (sum of |amounts|):    {classic_mistake:,.2f}")
+print(f"income+refund the mistake swallows:        {df.loc[(df['date'].dt.month == 10) & (df['amount'] > 0), 'amount'].sum():,.2f}")
+print("\nnow look at the number the agent gave above. If it matches the second line,")
+print("that is a SILENT FAILURE: fluent, confident - and it counted income as spending.")
 ''', ("demo",)))
 
 nb1_cells.append(md("""---
@@ -1089,13 +1075,11 @@ for c in demo2["executed_code"]:
     print(c["code"], "\n   ok:", c["ok"])
 
 truth2 = -df.loc[df["raw_description"].str.contains("STARBUCKS") & (df["amount"] < 0), "amount"].sum()
-got2 = extract_final_number(demo2["answer"])
-print(f"\nground truth (case-insensitive substring match, 3 variants): {truth2:,.2f}")
-print(f"agent claimed: {got2}")
+print(f"\ntruth (case-insensitive substring match): {truth2:,.2f}")
 print("\nthe variants hiding in raw_description:")
 print(df.loc[df["raw_description"].str.contains("STARBUCKS"), "raw_description"].value_counts().to_string())
-print("VERDICT:", "PASS" if got2 is not None and abs(abs(got2) - truth2) <= 0.01
-      else "SILENT FAILURE - the code executed cleanly and still answered wrong")
+print("\nthe agent's code ran without a single error and answered $0.00.")
+print("SILENT FAILURE: no crash, no warning - just a confidently wrong zero.")
 ''', ("demo",)))
 
 nb1_cells.append(md("""---
@@ -1458,6 +1442,12 @@ nb3_cells.append(md("""---
 
 The same source that CI imports (`utils.py`) - shown here so there is zero magic: plain
 functions over the run result, one concept per cell.
+
+### Extraction: the FINAL ANSWER convention
+
+The hardened prompt (below) forces quantitative answers to end with a machine-checkable
+`FINAL ANSWER: <number>` line. That single convention turns free-form chat into
+**assertable output** - every numeric check below is built on it:
 """))
 
 nb3_cells.append(code(F_EXTRACT, ("core",)))

@@ -159,8 +159,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
-sns.set_theme(style="whitegrid")
-
 _AGENT_NS = {}
 EXEC_LOG = []
 

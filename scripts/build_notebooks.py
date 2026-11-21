@@ -148,8 +148,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
-sns.set_theme(style="whitegrid")
-
 _AGENT_NS = {}
 EXEC_LOG = []
 
@@ -874,78 +872,69 @@ nb1_cells.append(md(f"""{badge("01_build_your_agent.ipynb")}
 
 ### Build a tool-calling agent over a bank ledger - then watch it fail *silently* on three engineered traps
 
-This is notebook **1 of 3**: today we only build. Notebook 2 makes the agent's behavior
-observable (tracing); notebook 3 replaces vibes with automated evals.
+Notebook **1 of 3**. Notebook 2 traces what the agent actually did; notebook 3 replaces
+vibes with an automated eval suite.
 
-| Notebook | What we do |
-|---|---|
-| **1. Build your Agent** (this one) | connect, the data, 3 tools, the agent loop, 3 silent failures |
-| 2. Tracing with Phoenix | see what the agent actually did - tool cascades, token burn, the "Mind Reader" game |
-| 3. Evaluations | a golden test suite that catches a deliberately injected regression, then CI |
-
-**How to run:** top to bottom, one concept per cell. Save your seat key as the
-`LITELLM_API_KEY` Colab secret (from the view-only key sheet on your desk card), or
-paste it when prompted.
+**How to run:** top to bottom, one concept per cell. Your seat key goes in the
+`LITELLM_API_KEY` Colab secret (from the view-only key sheet on your desk card) - or
+paste it when asked.
 """))
 
 nb1_cells.append(md("""---
 ## Connect
 
-Get your workshop key from the **view-only key sheet** (link on your desk card).
+Install, then point a client at the workshop gateway with your seat key.
 """))
-
-nb1_cells.append(code(r'''import os
-
-GATEWAY_URL = os.getenv("LITELLM_BASE_URL", "https://fmlds-eval-workshop-gateway.fly.dev/v1")
-AGENT_MODEL = "gpt-4o-mini"
-
-DATA_URL = os.getenv("WORKSHOP_DATA_URL", "''' + RAW + r'''/data/transactions.csv")
-LOCAL_DATA = "data/transactions.csv"
-
-print(f"gateway: {GATEWAY_URL}")
-print(f"agent model: {AGENT_MODEL}")
-''', ("core",)))
 
 nb1_cells.append(code('''%pip install -q "openai>=1.40" "pandas>=2.0" "numpy>=1.26" "matplotlib>=3.8" "seaborn>=0.13"
 ''', ("core",)))
 
 nb1_cells.append(code(r'''import os
 import time
-from openai import OpenAI
+from getpass import getpass
+from openai import OpenAI, AuthenticationError
 
-key = os.getenv("LITELLM_API_KEY", "").strip() or __import__("getpass").getpass("Paste your workshop API key: ")
+GATEWAY_URL = "https://fmlds-eval-workshop-gateway.fly.dev/v1"
+AGENT_MODEL = "gpt-4o-mini"
+
+key = os.getenv("LITELLM_API_KEY", "").strip() or getpass("Paste your workshop API key: ")
 client = OpenAI(api_key=key.strip().strip("'\""), base_url=GATEWAY_URL)
 
-t0 = time.time()
-client.chat.completions.create(model=AGENT_MODEL, messages=[{"role": "user", "content": "ping"}], max_tokens=2)
-print(f"OK  gateway reachable ({time.time() - t0:.2f}s) - environment ready")
+try:
+    t0 = time.time()
+    client.chat.completions.create(model=AGENT_MODEL, messages=[{"role": "user", "content": "ping"}], max_tokens=2)
+    print(f"OK  gateway reachable ({time.time() - t0:.2f}s) - environment ready")
+except AuthenticationError:
+    print("Key rejected - double-check it against the key sheet, then re-run this cell.")
 ''', ("core",)))
 
 nb1_cells.append(md("""---
 ## The data: a synthetic bank ledger
 
-508 transactions, May-Oct 2026, generated deterministically for this workshop (no real
-financial data). Three columns are booby-trapped:
+508 transactions, May-Oct 2026, generated for this workshop (no real financial data).
+Two columns are booby-trapped - and note what's *missing*: no merchant city, no
+location. That matters in failure #3.
 
-| column | meaning | trap potential |
+| column | meaning | trap |
 |---|---|---|
 | `date` | transaction date | |
-| `raw_description` | raw bank string, e.g. `STARBUCKS #1042`, `AMZN Mktp US*1A2B3C` | string fragmentation |
+| `raw_description` | raw bank string: `STARBUCKS #1042`, `AMZN Mktp US*1A2B3C` | string fragmentation |
 | `category` | 10 broad categories | |
 | `amount` | **signed**: positive = income/refund, negative = expense | polarity inversion |
 | `account_type` | Checking / Savings / Credit Card | |
-
-Note what the schema does **not** have: no merchant city, no location. Keep that in mind
-for failure #3.
 """))
 
-nb1_cells.append(code(r'''import pandas as pd
+nb1_cells.append(code(r'''import os
+
+import pandas as pd
+
+DATA_URL = "''' + RAW + r'''/data/transactions.csv"
 
 try:
     df = pd.read_csv(DATA_URL)
-    source = "repo raw URL"
+    source = "repo"
 except Exception:
-    df = pd.read_csv(LOCAL_DATA)
+    df = pd.read_csv("data/transactions.csv")
     source = "local file"
 df["date"] = pd.to_datetime(df["date"])
 
@@ -965,20 +954,17 @@ nb1_cells.append(code(F_REGISTRY, ("core",)))
 nb1_cells.append(md("""---
 ## Tool 2 - `execute_python_code`: the agent's hands
 
-This is the tool that makes it an *agent*: the model writes pandas code, this tool runs it.
+The model writes pandas code; this tool runs it. But we're executing code written by a
+language model, so two cells:
 
-One problem: we are about to execute code written by a language model. Two cells handle it:
+**The guard** parses the model's code (without running it) and rejects imports like
+`os`/`subprocess` and builtins like `open`/`eval` - the rejection goes back to the
+model as a tool result, so it can rewrite and retry, like a code review.
 
-**The guard** - before anything runs, the model's code is parsed and checked (but not
-executed): imports like `os` / `subprocess` / `requests` and dangerous builtins like
-`open` / `eval` are rejected. The rejection goes back to the model as a normal tool
-result - like a code review, so it can rewrite its code and try again.
-
-**The executor** - runs the approved snippet in a workspace that already contains `df`
-(plus pandas, numpy, matplotlib, seaborn), keeps variables between calls, and returns
-to the model: what the code printed, any traceback, and how many charts it drew.
-The model seeing its own errors and retrying is the "retry bloat" you will watch in
-failure #3.
+**The executor** runs the approved snippet in a workspace holding `df` (plus
+pandas/numpy/matplotlib/seaborn), keeps variables between calls, and returns what the
+code printed, any traceback, and how many charts it drew. The model seeing its own
+errors and retrying is the "retry bloat" of failure #3.
 """))
 
 nb1_cells.append(code(F_GUARD, ("core",)))
@@ -1006,25 +992,18 @@ nb1_cells.append(code(F_PROMPT_NAIVE, ("core",)))
 nb1_cells.append(md("""---
 ## The agent loop - hand-rolled, no framework
 
-Three small pieces, then the loop:
-
-- `_chat` - one LLM call through the gateway
-- `dispatch_tool` - execute one tool call the model requested; errors become tool output, never crashes
-- `run_agent` - the **router** is the model itself: we send the tool schemas with every
-  request, it decides which to call (`msg.tool_calls`), we feed results back, repeat
-  until a final answer or the tool budget (`MAX_TOOL_CALLS = 6`) runs out
+The **router** is the model itself: we send the tool schemas with every request, it
+decides which to call (`msg.tool_calls`), we dispatch and feed results back, repeat
+until a final answer or the tool budget (`MAX_TOOL_CALLS = 6`) runs out.
 
 > Routing is a capability in its own right - notebook 3 evaluates it separately from
 > "was the answer right".
 
-Each run returns everything worth inspecting later: the message history, the code the
-agent executed, and an `events` log (latency, tokens, errors) - notebook 2 turns that
-log into a real tracing view.
+Each run also returns an `events` log (latency, tokens, errors per call) - notebook 2
+turns it into a real tracing view.
 """))
 
-nb1_cells.append(code(F_CHAT, ("core",)))
-
-nb1_cells.append(code(F_DISPATCH, ("core",)))
+nb1_cells.append(code(F_CHAT + "\n\n" + F_DISPATCH, ("core",)))
 
 nb1_cells.append(code(display_src(F_RUN_AGENT), ("core",)))
 
@@ -1112,17 +1091,15 @@ nb1_cells.append(md("""---
 ## Why "vibe-checking" fails
 
 All three failures share one property: **the agent never crashed where the user could
-see it.** It produced fluent, confident, well-formatted prose. The bug lived in the
-*semantics* - a swallowed sign, an over-strict string match, an invented column - and
-semantics are exactly what human eyeballs are bad at checking.
+see it.** Fluent, confident prose - with the bug living in the *semantics*: a swallowed
+sign, an over-strict string match, an invented column. Semantics are exactly what human
+eyeballs are bad at checking.
 
-Production remedy, and the rest of this workshop:
-1. **Observe** what actually happened (notebook 2 - traces, not vibes)
-2. **Assert** what must be true (notebook 3 - execution, router, ground-truth and judge checks)
-3. **Gate** on it automatically (notebook 3 - CI)
+The rest of the workshop: **observe** what happened (notebook 2), **assert** what must
+be true (notebook 3), **gate** on it in CI (notebook 3).
 
 *(The code you just built also lives in the repo's canonical `utils.py`, generated from
-this exact notebook source. Notebook 2 imports it so you don't re-run notebook 1.)*
+this notebook's source. Notebook 2 imports it so you don't re-run this notebook.)*
 """))
 
 

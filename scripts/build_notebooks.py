@@ -50,6 +50,13 @@ def badge(notebook):
     return f"[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)]({COLAB}/{notebook})"
 
 
+def display_src(src):
+    """Strip the '# span-hook' lines for notebook display: participants meet
+    spans in notebook 2, where a tracer actually gets attached. utils.py keeps
+    them - the transformation is deterministic, so there is still one source."""
+    return "\n".join(line for line in src.splitlines() if "# span-hook" not in line)
+
+
 # =====================================================================
 # Micro-fragments: cell-sized, shared between notebooks and utils.py.
 # =====================================================================
@@ -111,32 +118,26 @@ print("tools:", list(TOOLS))
 
 F_GUARD = r'''import ast
 
-FORBIDDEN_IMPORTS = {"os", "sys", "subprocess", "shutil", "socket", "requests", "urllib", "pathlib", "importlib", "builtins"}
-FORBIDDEN_NAMES = {"open", "exec", "eval", "compile", "__import__", "globals", "locals", "vars", "input"}
+BLOCKED = {"os", "sys", "subprocess", "requests", "urllib", "pathlib", "importlib",
+           "open", "exec", "eval", "compile", "__import__", "globals", "locals", "input"}
 
 
 def _guard(code_str):
-    """AST-scan a snippet before running it: block imports and dangerous builtins."""
+    """Parse the model's code without running it; reject blocked imports and builtins."""
     try:
         tree = ast.parse(code_str)
     except SyntaxError as e:
         return f"SyntaxError: {e}"
     for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                if alias.name.split(".")[0] in FORBIDDEN_IMPORTS:
-                    return f"Blocked: import of {alias.name} is not allowed inside the agent sandbox."
-        if isinstance(node, ast.ImportFrom) and node.module and node.module.split(".")[0] in FORBIDDEN_IMPORTS:
-            return f"Blocked: import from {node.module} is not allowed inside the agent sandbox."
-        if isinstance(node, ast.Name) and node.id in FORBIDDEN_NAMES:
+        if isinstance(node, ast.Import) and any(a.name.split(".")[0] in BLOCKED for a in node.names):
+            return "Blocked: imports are not allowed inside the agent sandbox."
+        if isinstance(node, ast.ImportFrom) and (node.module or "").split(".")[0] in BLOCKED:
+            return "Blocked: imports are not allowed inside the agent sandbox."
+        if isinstance(node, ast.Name) and node.id in BLOCKED:
             return f"Blocked: use of '{node.id}' is not allowed inside the agent sandbox."
         if isinstance(node, ast.Attribute) and node.attr.startswith("__"):
             return "Blocked: dunder attribute access is not allowed inside the agent sandbox."
     return None
-
-
-print(_guard("import os"))                    # -> Blocked
-print(_guard("df['a'].sum()"))                # -> None (allowed)
 '''
 
 F_EXECUTOR = r'''import io
@@ -243,22 +244,29 @@ Non-negotiable rules:
 CREATIVE_SYSTEM_PROMPT = """You are a warm, creative financial storyteller. Chat naturally with the user about their money, like a friend who happens to know data science. Feel free to riff, estimate, round generously and paint a picture with the numbers - exact bookkeeping matters less than an engaging, encouraging conversation. Use the tools when it's convenient."""
 '''
 
-F_SPAN_HOOKS = r'''import contextlib
+F_SPAN_HOOKS = r'''# ---------------------------------------------------------------------------
+# Span hooks (utils.py-only): notebook 2 attaches a Phoenix tracer via
+# set_span_tracer(), and the span-hook lines in run_agent start emitting
+# CHAIN/TOOL spans. Notebook 1's teaching view omits those lines entirely.
+# ---------------------------------------------------------------------------
 
-# A socket for notebook 2: it plugs a Phoenix tracer in here, and run_agent
-# starts emitting spans. Until then these hooks are inert no-ops.
 SPAN_TRACER = None
 
 
-def _span_cm(name):
+def _span(name, kind):
+    """Start a span if a tracer is attached; returns a handle (or None)."""
     if SPAN_TRACER is None:
-        return contextlib.nullcontext()
-    return SPAN_TRACER.start_as_current_span(name)
-
-
-def _set_span_kind(span, kind):
+        return None
+    cm = SPAN_TRACER.start_as_current_span(name)
+    span = cm.__enter__()
     if span is not None:
         span.set_attribute("openinference.span.kind", kind)
+    return cm
+
+
+def _end_span(handle):
+    if handle is not None:
+        handle.__exit__(None, None, None)
 '''
 
 F_CHAT = r'''import time
@@ -304,30 +312,30 @@ F_RUN_AGENT = r'''def run_agent(query, system_prompt=NAIVE_SYSTEM_PROMPT, temper
     messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": query}]
     tool_calls_used = 0
     answer = ""
-    with _span_cm(label) as root_span:
-        _set_span_kind(root_span, "CHAIN")
-        while True:
+    root_span = _span(label, "CHAIN")  # span-hook
+    while True:
+        t0 = time.time()
+        resp = _chat(messages, temperature, model, tools=TOOL_SPECS)
+        msg = resp.choices[0].message
+        events.append({"kind": "llm", "name": model, "latency": round(time.time() - t0, 2),
+                       "prompt_tokens": getattr(resp.usage, "prompt_tokens", 0) or 0,
+                       "completion_tokens": getattr(resp.usage, "completion_tokens", 0) or 0})
+        messages.append(msg.model_dump(exclude_none=True))
+        if not msg.tool_calls or tool_calls_used >= max_tool_calls:
+            answer = msg.content or ""
+            break
+        for tc in msg.tool_calls:
+            tool_calls_used += 1
             t0 = time.time()
-            resp = _chat(messages, temperature, model, tools=TOOL_SPECS)
-            msg = resp.choices[0].message
-            events.append({"kind": "llm", "name": model, "latency": round(time.time() - t0, 2),
-                           "prompt_tokens": getattr(resp.usage, "prompt_tokens", 0) or 0,
-                           "completion_tokens": getattr(resp.usage, "completion_tokens", 0) or 0})
-            messages.append(msg.model_dump(exclude_none=True))
-            if not msg.tool_calls or tool_calls_used >= max_tool_calls:
-                answer = msg.content or ""
-                break
-            for tc in msg.tool_calls:
-                tool_calls_used += 1
-                t0 = time.time()
-                with _span_cm(tc.function.name) as tool_span:
-                    _set_span_kind(tool_span, "TOOL")
-                    out = dispatch_tool(tc)
-                events.append({"kind": "tool", "name": tc.function.name, "latency": round(time.time() - t0, 2),
-                               "error": out.get("ok") is False or "error" in out})
-                messages.append({"role": "tool", "tool_call_id": tc.id, "content": json.dumps(out)[:4000]})
-            if tool_calls_used >= max_tool_calls:
-                messages.append({"role": "user", "content": "Tool budget exhausted - give your best final answer now."})
+            tool_span = _span(tc.function.name, "TOOL")  # span-hook
+            out = dispatch_tool(tc)
+            _end_span(tool_span)  # span-hook
+            events.append({"kind": "tool", "name": tc.function.name, "latency": round(time.time() - t0, 2),
+                           "error": out.get("ok") is False or "error" in out})
+            messages.append({"role": "tool", "tool_call_id": tc.id, "content": json.dumps(out)[:4000]})
+        if tool_calls_used >= max_tool_calls:
+            messages.append({"role": "user", "content": "Tool budget exhausted - give your best final answer now."})
+    _end_span(root_span)  # span-hook
     return {"query": query, "label": label, "answer": answer, "messages": messages,
             "tool_calls": tool_calls_used, "executed_code": list(EXEC_LOG), "events": events,
             "model": model, "temperature": temperature, "system_prompt": system_prompt}
@@ -996,16 +1004,6 @@ baseline "vibe-coded" agent. (The hardened and creative prompts arrive in notebo
 nb1_cells.append(code(F_PROMPT_NAIVE, ("core",)))
 
 nb1_cells.append(md("""---
-## A socket for later (you can skip these 3 lines)
-
-Notebook 2 will plug a tracer into this socket to watch the agent live. Today these
-helpers do nothing at all. Real production code carries hooks like this so
-observability can be added later without rewriting the app.
-"""))
-
-nb1_cells.append(code(F_SPAN_HOOKS, ("core",)))
-
-nb1_cells.append(md("""---
 ## The agent loop - hand-rolled, no framework
 
 Three small pieces, then the loop:
@@ -1028,7 +1026,7 @@ nb1_cells.append(code(F_CHAT, ("core",)))
 
 nb1_cells.append(code(F_DISPATCH, ("core",)))
 
-nb1_cells.append(code(F_RUN_AGENT, ("core",)))
+nb1_cells.append(code(display_src(F_RUN_AGENT), ("core",)))
 
 nb1_cells.append(md("""---
 ## Answer extraction
@@ -1243,6 +1241,8 @@ tracer_provider = register(project_name=f"workshop-{SEAT}",
 OpenAIInstrumentor().instrument(tracer_provider=tracer_provider)
 utils.set_span_tracer(tracer_provider.get_tracer(__name__))
 print("instrumented: OpenAI SDK -> LLM spans, agent loop -> CHAIN/TOOL spans")
+print("(the canonical run_agent in utils.py carries a 4-line span hook that")
+print(" notebook 1 left out of its teaching view - attaching the tracer turns it on)")
 ''', ("demo",)))
 
 nb2_cells.append(code(r'''traced = run_agent("How much did I spend at Starbucks in total?",

@@ -128,32 +128,26 @@ print("tools:", list(TOOLS))
 
 import ast
 
-FORBIDDEN_IMPORTS = {"os", "sys", "subprocess", "shutil", "socket", "requests", "urllib", "pathlib", "importlib", "builtins"}
-FORBIDDEN_NAMES = {"open", "exec", "eval", "compile", "__import__", "globals", "locals", "vars", "input"}
+BLOCKED = {"os", "sys", "subprocess", "requests", "urllib", "pathlib", "importlib",
+           "open", "exec", "eval", "compile", "__import__", "globals", "locals", "input"}
 
 
 def _guard(code_str):
-    """AST-scan a snippet before running it: block imports and dangerous builtins."""
+    """Parse the model's code without running it; reject blocked imports and builtins."""
     try:
         tree = ast.parse(code_str)
     except SyntaxError as e:
         return f"SyntaxError: {e}"
     for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                if alias.name.split(".")[0] in FORBIDDEN_IMPORTS:
-                    return f"Blocked: import of {alias.name} is not allowed inside the agent sandbox."
-        if isinstance(node, ast.ImportFrom) and node.module and node.module.split(".")[0] in FORBIDDEN_IMPORTS:
-            return f"Blocked: import from {node.module} is not allowed inside the agent sandbox."
-        if isinstance(node, ast.Name) and node.id in FORBIDDEN_NAMES:
+        if isinstance(node, ast.Import) and any(a.name.split(".")[0] in BLOCKED for a in node.names):
+            return "Blocked: imports are not allowed inside the agent sandbox."
+        if isinstance(node, ast.ImportFrom) and (node.module or "").split(".")[0] in BLOCKED:
+            return "Blocked: imports are not allowed inside the agent sandbox."
+        if isinstance(node, ast.Name) and node.id in BLOCKED:
             return f"Blocked: use of '{node.id}' is not allowed inside the agent sandbox."
         if isinstance(node, ast.Attribute) and node.attr.startswith("__"):
             return "Blocked: dunder attribute access is not allowed inside the agent sandbox."
     return None
-
-
-print(_guard("import os"))                    # -> Blocked
-print(_guard("df['a'].sum()"))                # -> None (allowed)
 
 
 
@@ -265,22 +259,29 @@ CREATIVE_SYSTEM_PROMPT = """You are a warm, creative financial storyteller. Chat
 
 
 
-import contextlib
+# ---------------------------------------------------------------------------
+# Span hooks (utils.py-only): notebook 2 attaches a Phoenix tracer via
+# set_span_tracer(), and the span-hook lines in run_agent start emitting
+# CHAIN/TOOL spans. Notebook 1's teaching view omits those lines entirely.
+# ---------------------------------------------------------------------------
 
-# A socket for notebook 2: it plugs a Phoenix tracer in here, and run_agent
-# starts emitting spans. Until then these hooks are inert no-ops.
 SPAN_TRACER = None
 
 
-def _span_cm(name):
+def _span(name, kind):
+    """Start a span if a tracer is attached; returns a handle (or None)."""
     if SPAN_TRACER is None:
-        return contextlib.nullcontext()
-    return SPAN_TRACER.start_as_current_span(name)
-
-
-def _set_span_kind(span, kind):
+        return None
+    cm = SPAN_TRACER.start_as_current_span(name)
+    span = cm.__enter__()
     if span is not None:
         span.set_attribute("openinference.span.kind", kind)
+    return cm
+
+
+def _end_span(handle):
+    if handle is not None:
+        handle.__exit__(None, None, None)
 
 
 
@@ -329,30 +330,30 @@ def run_agent(query, system_prompt=NAIVE_SYSTEM_PROMPT, temperature=0.0, model=N
     messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": query}]
     tool_calls_used = 0
     answer = ""
-    with _span_cm(label) as root_span:
-        _set_span_kind(root_span, "CHAIN")
-        while True:
+    root_span = _span(label, "CHAIN")  # span-hook
+    while True:
+        t0 = time.time()
+        resp = _chat(messages, temperature, model, tools=TOOL_SPECS)
+        msg = resp.choices[0].message
+        events.append({"kind": "llm", "name": model, "latency": round(time.time() - t0, 2),
+                       "prompt_tokens": getattr(resp.usage, "prompt_tokens", 0) or 0,
+                       "completion_tokens": getattr(resp.usage, "completion_tokens", 0) or 0})
+        messages.append(msg.model_dump(exclude_none=True))
+        if not msg.tool_calls or tool_calls_used >= max_tool_calls:
+            answer = msg.content or ""
+            break
+        for tc in msg.tool_calls:
+            tool_calls_used += 1
             t0 = time.time()
-            resp = _chat(messages, temperature, model, tools=TOOL_SPECS)
-            msg = resp.choices[0].message
-            events.append({"kind": "llm", "name": model, "latency": round(time.time() - t0, 2),
-                           "prompt_tokens": getattr(resp.usage, "prompt_tokens", 0) or 0,
-                           "completion_tokens": getattr(resp.usage, "completion_tokens", 0) or 0})
-            messages.append(msg.model_dump(exclude_none=True))
-            if not msg.tool_calls or tool_calls_used >= max_tool_calls:
-                answer = msg.content or ""
-                break
-            for tc in msg.tool_calls:
-                tool_calls_used += 1
-                t0 = time.time()
-                with _span_cm(tc.function.name) as tool_span:
-                    _set_span_kind(tool_span, "TOOL")
-                    out = dispatch_tool(tc)
-                events.append({"kind": "tool", "name": tc.function.name, "latency": round(time.time() - t0, 2),
-                               "error": out.get("ok") is False or "error" in out})
-                messages.append({"role": "tool", "tool_call_id": tc.id, "content": json.dumps(out)[:4000]})
-            if tool_calls_used >= max_tool_calls:
-                messages.append({"role": "user", "content": "Tool budget exhausted - give your best final answer now."})
+            tool_span = _span(tc.function.name, "TOOL")  # span-hook
+            out = dispatch_tool(tc)
+            _end_span(tool_span)  # span-hook
+            events.append({"kind": "tool", "name": tc.function.name, "latency": round(time.time() - t0, 2),
+                           "error": out.get("ok") is False or "error" in out})
+            messages.append({"role": "tool", "tool_call_id": tc.id, "content": json.dumps(out)[:4000]})
+        if tool_calls_used >= max_tool_calls:
+            messages.append({"role": "user", "content": "Tool budget exhausted - give your best final answer now."})
+    _end_span(root_span)  # span-hook
     return {"query": query, "label": label, "answer": answer, "messages": messages,
             "tool_calls": tool_calls_used, "executed_code": list(EXEC_LOG), "events": events,
             "model": model, "temperature": temperature, "system_prompt": system_prompt}

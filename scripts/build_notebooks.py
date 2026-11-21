@@ -901,22 +901,21 @@ Install, then point a client at the workshop gateway with your seat key.
 nb1_cells.append(code('''%pip install -q "openai>=1.40" "pandas>=2.0" "numpy>=1.26" "matplotlib>=3.8" "seaborn>=0.13"
 ''', ("core",)))
 
-nb1_cells.append(code(r'''import os
-import time
+nb1_cells.append(code(r'''import time
 from getpass import getpass
 from openai import OpenAI, AuthenticationError
 
 GATEWAY_URL = "https://fmlds-eval-workshop-gateway.fly.dev/v1"
 AGENT_MODEL = "gpt-4o-mini"
 
-# key resolution: env var -> Colab secret (🔑 sidebar, "Notebook access" ON) -> paste
-key = os.getenv("LITELLM_API_KEY", "").strip()
-if not key:
-    try:
-        from google.colab import userdata
-        key = (userdata.get("LITELLM_API_KEY") or "").strip()
-    except Exception:
-        pass
+# key resolution: Colab secret (🔑 sidebar, "Notebook access" ON) -> paste when asked.
+# (The env-var path for CI/scripts lives in utils.connect, not here.)
+key = ""
+try:
+    from google.colab import userdata
+    key = (userdata.get("LITELLM_API_KEY") or "").strip()
+except Exception:
+    pass
 key = key or getpass("Paste your workshop API key: ")
 
 client = OpenAI(api_key=key.strip().strip("'\""), base_url=GATEWAY_URL)

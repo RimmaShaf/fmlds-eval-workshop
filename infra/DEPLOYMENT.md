@@ -462,6 +462,7 @@ secret and do the live pass.
 | Publish cell 401 | `PHOENIX_API_KEY` secret missing/typo (the board has auth ON) |
 | Publish "duplicate spans" | you already published from this runtime — expected on re-runs |
 | 429s during the suite | 15 RPM seat cap doing its job — wait ~30 s and re-run the cell |
+| Connect cell always prompts although the secret is set | Colab secrets are **not** environment variables, and "Notebook access" is per-notebook | switch the toggle on for *this* notebook in the 🔑 panel; the cells read secrets via `google.colab.userdata` (env var → Colab secret → prompt) |
 
 ---
 

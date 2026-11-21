@@ -786,6 +786,20 @@ UTILS_CONFIG = '''import getpass
 import hashlib
 import os
 
+
+def get_secret(name):
+    """Read a secret: env var first, then a Colab secret (Colab never exposes
+    secrets as env vars - google.colab.userdata is the only way to reach them)."""
+    value = os.getenv(name, "").strip()
+    if not value:
+        try:
+            from google.colab import userdata
+            value = (userdata.get(name) or "").strip()
+        except Exception:
+            pass
+    return value
+
+
 GATEWAY_URL = os.getenv("LITELLM_BASE_URL", "https://fmlds-eval-workshop-gateway.fly.dev/v1")
 
 AGENT_MODEL = "gpt-4o-mini"
@@ -806,10 +820,8 @@ def connect(api_key=None, base_url=None, model=None):
     global client, _SEAT_TAG
     from openai import OpenAI
 
-    raw = api_key or os.getenv("LITELLM_API_KEY", "")
-    if not raw:
-        raw = getpass.getpass("Paste your workshop API key: ")
-    key = raw.strip().strip("'\\"").strip()
+    key = (api_key or get_secret("LITELLM_API_KEY") or getpass.getpass("Paste your workshop API key: "))
+    key = key.strip().strip("'\\"").strip()
     _SEAT_TAG = hashlib.md5(key.encode()).hexdigest()[:8]
     client = OpenAI(api_key=key, base_url=base_url or GATEWAY_URL)
     t0 = time.time()
@@ -824,8 +836,8 @@ def seat_tag():
     global _SEAT_TAG
     if _SEAT_TAG:
         return _SEAT_TAG
-    raw = os.getenv("LITELLM_API_KEY", "").strip()
-    _SEAT_TAG = hashlib.md5(raw.encode()).hexdigest()[:8] if raw else "unknown"
+    key = get_secret("LITELLM_API_KEY")
+    _SEAT_TAG = hashlib.md5(key.encode()).hexdigest()[:8] if key else "unknown"
     return _SEAT_TAG
 
 
@@ -876,8 +888,8 @@ Notebook **1 of 3**. Notebook 2 traces what the agent actually did; notebook 3 r
 vibes with an automated eval suite.
 
 **How to run:** top to bottom, one concept per cell. Your seat key goes in the
-`LITELLM_API_KEY` Colab secret (from the view-only key sheet on your desk card) - or
-paste it when asked.
+`LITELLM_API_KEY` Colab secret (🔑 sidebar - remember to switch **Notebook access**
+on in each notebook) - or paste it when asked.
 """))
 
 nb1_cells.append(md("""---
@@ -897,7 +909,16 @@ from openai import OpenAI, AuthenticationError
 GATEWAY_URL = "https://fmlds-eval-workshop-gateway.fly.dev/v1"
 AGENT_MODEL = "gpt-4o-mini"
 
-key = os.getenv("LITELLM_API_KEY", "").strip() or getpass("Paste your workshop API key: ")
+# key resolution: env var -> Colab secret (🔑 sidebar, "Notebook access" ON) -> paste
+key = os.getenv("LITELLM_API_KEY", "").strip()
+if not key:
+    try:
+        from google.colab import userdata
+        key = (userdata.get("LITELLM_API_KEY") or "").strip()
+    except Exception:
+        pass
+key = key or getpass("Paste your workshop API key: ")
+
 client = OpenAI(api_key=key.strip().strip("'\""), base_url=GATEWAY_URL)
 
 try:
@@ -1310,10 +1331,9 @@ This optional cell ships your local spans to the board. Set the `PHOENIX_BOARD_U
 
 nb2_cells.append(code(r'''import copy
 import hashlib
-import os
 
-board_url = os.getenv("PHOENIX_BOARD_URL", "").strip()
-board_api_key = os.getenv("PHOENIX_API_KEY", "").strip()
+board_url = utils.get_secret("PHOENIX_BOARD_URL")
+board_api_key = utils.get_secret("PHOENIX_API_KEY")
 if not board_url:
     print("Set the PHOENIX_BOARD_URL and PHOENIX_API_KEY Colab secrets (desk card), then re-run.")
 else:

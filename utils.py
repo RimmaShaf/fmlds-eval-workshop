@@ -19,6 +19,20 @@ import getpass
 import hashlib
 import os
 
+
+def get_secret(name):
+    """Read a secret: env var first, then a Colab secret (Colab never exposes
+    secrets as env vars - google.colab.userdata is the only way to reach them)."""
+    value = os.getenv(name, "").strip()
+    if not value:
+        try:
+            from google.colab import userdata
+            value = (userdata.get(name) or "").strip()
+        except Exception:
+            pass
+    return value
+
+
 GATEWAY_URL = os.getenv("LITELLM_BASE_URL", "https://fmlds-eval-workshop-gateway.fly.dev/v1")
 
 AGENT_MODEL = "gpt-4o-mini"
@@ -39,10 +53,8 @@ def connect(api_key=None, base_url=None, model=None):
     global client, _SEAT_TAG
     from openai import OpenAI
 
-    raw = api_key or os.getenv("LITELLM_API_KEY", "")
-    if not raw:
-        raw = getpass.getpass("Paste your workshop API key: ")
-    key = raw.strip().strip("'\"").strip()
+    key = (api_key or get_secret("LITELLM_API_KEY") or getpass.getpass("Paste your workshop API key: "))
+    key = key.strip().strip("'\"").strip()
     _SEAT_TAG = hashlib.md5(key.encode()).hexdigest()[:8]
     client = OpenAI(api_key=key, base_url=base_url or GATEWAY_URL)
     t0 = time.time()
@@ -57,8 +69,8 @@ def seat_tag():
     global _SEAT_TAG
     if _SEAT_TAG:
         return _SEAT_TAG
-    raw = os.getenv("LITELLM_API_KEY", "").strip()
-    _SEAT_TAG = hashlib.md5(raw.encode()).hexdigest()[:8] if raw else "unknown"
+    key = get_secret("LITELLM_API_KEY")
+    _SEAT_TAG = hashlib.md5(key.encode()).hexdigest()[:8] if key else "unknown"
     return _SEAT_TAG
 
 

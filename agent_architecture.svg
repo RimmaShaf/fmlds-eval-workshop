@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1180" viewBox="0 0 1800 1180" role="img" aria-labelledby="title desc">
+  <title id="title">Workshop Financial Agent Architecture</title>
+  <desc id="desc">Hand-drawn architecture diagram showing the user, LiteLLM-backed GPT-4o-mini router, transaction tools, synthetic ledger, and three separate projects on the shared Phoenix board.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M1 1 L10 6 L1 11" fill="none" stroke="#252525" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="blueArrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M1 1 L10 6 L1 11" fill="none" stroke="#327eae" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <style>
+      text { font-family: "Chalkboard SE", "Comic Sans MS", "Trebuchet MS", sans-serif; fill: #282828; }
+      .title { font-size: 40px; font-weight: 600; }
+      .subtitle { font-size: 20px; fill: #565656; }
+      .label { font-size: 25px; font-weight: 600; }
+      .body { font-size: 19px; }
+      .small { font-size: 16px; fill: #4c4c4c; }
+      .tiny { font-size: 14px; fill: #4c4c4c; }
+      .line { fill: none; stroke: #292929; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+      .softline { fill: none; stroke: #555; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+      .dashed { fill: none; stroke: #393939; stroke-width: 2.8; stroke-dasharray: 13 13; stroke-linecap: round; }
+      .trace { fill: none; stroke: #327eae; stroke-width: 2.7; stroke-dasharray: 4 9; stroke-linecap: round; stroke-linejoin: round; }
+      .tool { fill: #fff; stroke: #333; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+  </defs>
+
+  <rect width="1800" height="1180" fill="#fff"/>
+  <text id="title-text" class="title" x="900" y="66" text-anchor="middle">Workshop Financial Agent Architecture</text>
+  <text class="subtitle" x="900" y="101" text-anchor="middle">Tool-calling agent flow and shared Phoenix trace destinations</text>
+
+  <!-- Agent loop boundary -->
+  <path class="dashed" d="M365 195 C560 174 1180 178 1438 205 C1460 390 1453 642 1438 829 C1196 852 584 852 367 829 C348 638 351 392 365 195 Z"/>
+  <rect x="795" y="177" width="235" height="42" rx="18" fill="#fff"/>
+  <text class="body" x="912" y="206" text-anchor="middle">Agent loop</text>
+
+  <!-- User -->
+  <path d="M75 478 C78 414 131 379 207 382 C280 385 324 430 320 499 C316 566 272 604 198 602 C125 600 72 556 75 478 Z" fill="#a9dcf6" stroke="#3685b6" stroke-width="4" stroke-linejoin="round"/>
+  <text class="label" x="198" y="492" text-anchor="middle" fill="#286d9a">User</text>
+  <text class="small" x="198" y="524" text-anchor="middle">financial question</text>
+
+  <!-- Request and answer arrows -->
+  <path class="line" d="M323 474 C370 461 410 457 468 462" marker-end="url(#arrow)"/>
+  <text class="small" x="390" y="440" text-anchor="middle">request</text>
+  <path class="line" d="M468 535 C407 550 365 551 322 539" marker-end="url(#arrow)"/>
+  <text class="small" x="393" y="579" text-anchor="middle">answer</text>
+
+  <!-- Router -->
+  <path d="M473 393 Q482 373 507 377 L808 379 Q829 383 832 404 L831 585 Q827 608 804 610 L499 608 Q477 603 474 582 Z" fill="#f6bfc0" stroke="#d9565b" stroke-width="4" stroke-linejoin="round"/>
+  <text class="label" x="652" y="437" text-anchor="middle" fill="#b9474c">Router</text>
+  <text class="body" x="652" y="473" text-anchor="middle">GPT-4o-mini · function calling</text>
+  <text class="body" x="652" y="507" text-anchor="middle">OpenAI SDK → LiteLLM gateway</text>
+  <text class="small" x="652" y="550" text-anchor="middle">chooses tools · reads results · replies</text>
+
+  <!-- Router-to-tool request fan -->
+  <path class="softline" d="M831 444 C884 410 928 337 989 323" marker-end="url(#arrow)"/>
+  <path class="softline" d="M832 474 C890 465 929 462 989 462" marker-end="url(#arrow)"/>
+  <path class="softline" d="M832 506 C895 533 932 578 989 602" marker-end="url(#arrow)"/>
+  <path class="softline" d="M830 548 C890 603 929 704 989 737" marker-end="url(#arrow)"/>
+
+  <!-- Tool results return to the router -->
+  <path class="dashed" d="M989 347 C934 382 905 417 831 451" marker-end="url(#arrow)"/>
+  <path class="dashed" d="M989 487 C930 492 892 494 832 491" marker-end="url(#arrow)"/>
+  <path class="dashed" d="M989 626 C922 601 890 567 831 531" marker-end="url(#arrow)"/>
+  <path class="dashed" d="M989 760 C919 689 886 616 828 557" marker-end="url(#arrow)"/>
+
+  <!-- Tools -->
+  <path class="tool" d="M1000 274 Q1006 263 1022 264 L1329 264 Q1345 267 1347 282 L1345 353 Q1342 367 1327 368 L1017 368 Q1002 366 1000 351 Z"/>
+  <text class="label" x="1174" y="305" text-anchor="middle">fetch_data_schema</text>
+  <text class="small" x="1174" y="337" text-anchor="middle">columns · types · sample rows</text>
+
+  <path class="tool" d="M1000 410 Q1006 397 1022 398 L1329 398 Q1345 400 1347 416 L1345 526 Q1342 539 1326 540 L1018 540 Q1002 538 1000 523 Z"/>
+  <text class="label" x="1174" y="439" text-anchor="middle">analyze_transactions</text>
+  <rect x="1022" y="458" width="143" height="51" rx="14" fill="#eef5e5" stroke="#697b4d" stroke-width="2"/>
+  <text class="small" x="1094" y="480" text-anchor="middle">generate_analysis</text>
+  <text class="small" x="1094" y="500" text-anchor="middle">_code</text>
+  <path class="softline" d="M1166 484 L1190 484" marker-end="url(#arrow)"/>
+  <rect x="1194" y="458" width="130" height="51" rx="14" fill="#eef5e5" stroke="#697b4d" stroke-width="2"/>
+  <text class="small" x="1259" y="480" text-anchor="middle">execute_python</text>
+  <text class="small" x="1259" y="500" text-anchor="middle">_code on df</text>
+
+  <path class="tool" d="M1000 568 Q1007 555 1022 557 L1329 557 Q1345 560 1347 575 L1345 646 Q1342 660 1327 661 L1018 660 Q1002 657 1000 642 Z"/>
+  <text class="label" x="1174" y="600" text-anchor="middle">financial_rules_lookup</text>
+  <text class="small" x="1174" y="632" text-anchor="middle">budget · savings guidance</text>
+
+  <path class="tool" d="M1000 695 Q1006 682 1022 683 L1329 683 Q1345 686 1347 702 L1345 773 Q1342 787 1327 788 L1018 787 Q1002 784 1000 769 Z"/>
+  <text class="label" x="1174" y="726" text-anchor="middle">visualize_transactions</text>
+  <text class="small" x="1174" y="759" text-anchor="middle">generate chart code → execute_python_code</text>
+
+  <!-- Shared data -->
+  <path d="M1485 443 C1485 418 1530 402 1590 402 C1650 402 1696 418 1696 443 L1696 583 C1696 609 1650 624 1590 624 C1530 624 1485 609 1485 583 Z" fill="#e3f1d5" stroke="#718451" stroke-width="3"/>
+  <ellipse cx="1590" cy="443" rx="105" ry="39" fill="#edf6e5" stroke="#718451" stroke-width="3"/>
+  <path class="softline" d="M1485 514 C1490 565 1688 565 1696 514"/>
+  <text class="label" x="1590" y="493" text-anchor="middle">Synthetic ledger</text>
+  <text class="body" x="1590" y="531" text-anchor="middle">transactions.csv</text>
+  <text class="small" x="1590" y="563" text-anchor="middle">loaded as DataFrame df</text>
+  <path class="softline" d="M1347 471 C1400 462 1440 462 1485 467" marker-end="url(#arrow)"/>
+  <path class="softline" d="M1485 539 C1440 548 1400 548 1347 535" marker-end="url(#arrow)"/>
+  <text class="tiny" x="1416" y="450" text-anchor="middle">read / chart</text>
+
+  <!-- Phoenix projects -->
+  <path d="M70 890 Q76 872 96 875 L1701 875 Q1721 878 1724 897 L1722 1133 Q1719 1150 1699 1151 L94 1150 Q74 1148 71 1131 Z" fill="#fafcff" stroke="#4b6f93" stroke-width="3" stroke-linejoin="round"/>
+  <text class="label" x="900" y="920" text-anchor="middle" fill="#315f87">Shared Phoenix board · Fly</text>
+
+  <rect x="111" y="956" width="475" height="131" rx="24" fill="#dff0fc" stroke="#3d82aa" stroke-width="3"/>
+  <text class="label" x="348" y="1002" text-anchor="middle" fill="#286d9a">00-Part-2-tracing-set-up</text>
+  <text class="body" x="348" y="1038" text-anchor="middle">Notebook 2 · agent / LLM / tools</text>
+  <text class="small" x="348" y="1065" text-anchor="middle">shared by the room · session.id tags</text>
+
+  <rect x="663" y="956" width="475" height="131" rx="24" fill="#f5e8ca" stroke="#9d7b3f" stroke-width="3"/>
+  <text class="label" x="900" y="1002" text-anchor="middle" fill="#7c5b24">01-Part-3-evaluations</text>
+  <text class="body" x="900" y="1038" text-anchor="middle">Notebook 3 · evaluation runs + grades</text>
+  <text class="small" x="900" y="1065" text-anchor="middle">separate shared project · session.id tags</text>
+
+  <rect x="1215" y="956" width="457" height="131" rx="24" fill="#f0e8f8" stroke="#80629b" stroke-width="3"/>
+  <text class="label" x="1443" y="1002" text-anchor="middle" fill="#694e84">gateway</text>
+  <text class="body" x="1443" y="1038" text-anchor="middle">LiteLLM server-side traces</text>
+  <text class="small" x="1443" y="1065" text-anchor="middle">remains separate from Part 2 / Part 3</text>
+
+  <!-- Trace export routes -->
+  <path class="trace" d="M565 610 C540 728 445 816 350 953" marker-end="url(#blueArrow)"/>
+  <text class="small" x="420" y="825" text-anchor="middle" fill="#327eae">Notebook 2 OTLP</text>
+  <path class="trace" d="M777 835 C812 874 865 911 898 953" marker-end="url(#blueArrow)"/>
+  <text class="small" x="802" y="891" text-anchor="middle" fill="#327eae">Notebook 3 OTLP</text>
+  <path class="trace" d="M724 610 C923 711 1263 793 1439 953" marker-end="url(#blueArrow)"/>
+  <text class="small" x="1190" y="820" text-anchor="middle" fill="#327eae">LiteLLM callback</text>
+
+  <text class="tiny" x="900" y="1167" text-anchor="middle">Part 2 and Part 3 are room-wide projects; gateway transport traces stay in their own project.</text>
+</svg>

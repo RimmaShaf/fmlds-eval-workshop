@@ -1123,13 +1123,13 @@ nb1_cells.append(code(display_src(F_RUN_AGENT), ("core",)))
 nb1_cells.append(md("""---
 ## Challenge 1 - Signed amounts
 
-Ask the naive agent to use its Python tool, but do not tell it how signed amounts work.
+Ask the naive agent to calculate October expenses, but do not tell it how signed amounts work.
 Income and refunds are **positive**; expenses are **negative**.
 
 Before running: what do *you* expect it to say?
 """))
 
-nb1_cells.append(code(r'''demo1 = run_agent("Use analyze_transactions to calculate my total expenses in October and report the dollar amount.",
+nb1_cells.append(code(r'''demo1 = run_agent("What were my total expenses in October?",
                               system_prompt=NAIVE_SYSTEM_PROMPT, temperature=0.0)
 print(demo1["answer"])
 ''', ("demo",)))
@@ -1147,7 +1147,7 @@ nb1_cells.append(md("""### Harder sign case: net expenses after refunds
 Gross expenses count negative transactions. Net expenses also subtract refunds, but must
 not subtract income. The ledger contains an October refund for this case.
 """))
-nb1_cells.append(code(r'''demo1b = run_agent("Use analyze_transactions to calculate net expenses in October after transaction refunds, excluding income.",
+nb1_cells.append(code(r'''demo1b = run_agent("What were my net expenses in October after refunds, excluding income?",
                                system_prompt=NAIVE_SYSTEM_PROMPT, temperature=0.0)
 print(demo1b["answer"])
 ''', ("demo",)))
@@ -1168,7 +1168,7 @@ nb1_cells.append(md("""---
 the alias `SBUX`. `TULLY'S COFFEE` is a decoy: coffee does not necessarily mean Starbucks.
 """))
 
-nb1_cells.append(code(r'''demo2 = run_agent("Use analyze_transactions to find my total Starbucks spending and report the dollar amount, even if it is zero.",
+nb1_cells.append(code(r'''demo2 = run_agent("How much did I spend at Starbucks in total?",
                               system_prompt=NAIVE_SYSTEM_PROMPT, temperature=0.0)
 print(demo2["answer"])
 ''', ("demo",)))
@@ -1360,12 +1360,15 @@ nb2_cells.append(md("""> **Trace data note:** spans contain prompts and tool inp
 nb2_cells.append(md("""---
 ## 5. Challenge 1: signed expenses versus cash flow
 
+These are natural user questions; they do not name a tool. Watch the trace to see what the
+router chooses and why.
+
 Ask the agent for October expenses without explaining that income and refunds are positive
 while expenses are negative. In the trace, inspect the generated pandas code and tool output.
 """))
 
 nb2_cells.append(code(r"""gross_october = run_agent(
-    "Use analyze_transactions to calculate my total expenses in October and report the dollar amount.",
+    "What were my total expenses in October?",
     system_prompt=NAIVE_SYSTEM_PROMPT,
     temperature=0.0,
     label="nb2/october-gross-expenses",
@@ -1410,7 +1413,7 @@ income. The synthetic ledger contains an October refund.
 """))
 
 nb2_cells.append(code(r"""net_october = run_agent(
-    "Use analyze_transactions to calculate net expenses in October after transaction refunds, excluding income.",
+    "What were my net expenses in October after refunds, excluding income?",
     system_prompt=NAIVE_SYSTEM_PROMPT,
     temperature=0.0,
     label="nb2/net-expenses-after-refunds",
@@ -1435,7 +1438,7 @@ not Starbucks. Inspect the tool input and see whether the generated filter handl
 """))
 
 nb2_cells.append(code(r"""starbucks_run = run_agent(
-    "Use analyze_transactions to find my total Starbucks spending and report the dollar amount, even if it is zero.",
+    "How much did I spend at Starbucks in total?",
     system_prompt=NAIVE_SYSTEM_PROMPT,
     temperature=0.0,
     label="nb2/starbucks-aliases",

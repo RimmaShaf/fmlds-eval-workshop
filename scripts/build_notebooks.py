@@ -1247,7 +1247,9 @@ nb2_cells.append(md("""---
 ## Bootstrap the workshop agent
 
 Refresh stale `utils.py` copies, load the synthetic ledger, and connect through the same
-workshop gateway and seat key as notebook 1.
+workshop gateway and seat key as notebook 1. The shared Phoenix board requires a separate
+participant `PHOENIX_API_KEY` from your desk card; it is not your LiteLLM workshop key.
+Save it as a Colab secret named `PHOENIX_API_KEY` or enter it at the hidden prompt.
 """))
 
 nb2_cells.append(code(f"""import urllib.request
@@ -1271,6 +1273,18 @@ PHOENIX_API_KEY = utils.get_secret("PHOENIX_API_KEY")
 if not PHOENIX_API_KEY:
     from getpass import getpass
     PHOENIX_API_KEY = getpass("Phoenix board API key: ").strip()
+from phoenix.client import Client
+phoenix_client = Client(base_url=PHOENIX_BOARD_URL, api_key=PHOENIX_API_KEY)
+try:
+    phoenix_client.projects.list()
+except Exception as exc:
+    if "401" not in str(exc) and "Unauthorized" not in str(exc):
+        raise
+    from getpass import getpass
+    print("Saved Phoenix key was rejected. Enter the participant board key from your desk card.")
+    PHOENIX_API_KEY = getpass("Phoenix board API key: ").strip()
+    phoenix_client = Client(base_url=PHOENIX_BOARD_URL, api_key=PHOENIX_API_KEY)
+    phoenix_client.projects.list()
 from utils import NAIVE_SYSTEM_PROMPT, run_agent
 
 print("bootstrap done | seat tag:", SEAT, "| shared Phoenix project:", PHOENIX_PROJECT)
@@ -1346,10 +1360,7 @@ and output. A failed tool call should be visible in its TOOL span rather than di
 inside a final answer.
 """))
 
-nb2_cells.append(code(r"""from phoenix.client import Client
-
-phoenix_client = Client(base_url=PHOENIX_BOARD_URL, api_key=PHOENIX_API_KEY)
-spans_df = phoenix_client.spans.get_spans_dataframe(project_identifier=PHOENIX_PROJECT)
+nb2_cells.append(code(r"""spans_df = phoenix_client.spans.get_spans_dataframe(project_identifier=PHOENIX_PROJECT)
 trace_columns = [
     column for column in (
         "name", "span_kind", "parent_id", "status_code", "attributes.session.id",
@@ -1438,7 +1449,8 @@ nb3_cells.append(md("""> Install before importing the agent or tracing SDK. If C
 nb3_cells.append(md("""---
 ## Bootstrap
 
-Load the agent and golden suite, connect to the workshop gateway, and read the board key.
+Load the agent and golden suite, connect to the workshop gateway, and verify the separate
+participant `PHOENIX_API_KEY` from the desk card. It is not the LiteLLM workshop key.
 """))
 
 nb3_cells.append(code(f'''import urllib.request
@@ -1463,6 +1475,18 @@ PHOENIX_API_KEY = utils.get_secret("PHOENIX_API_KEY")
 if not PHOENIX_API_KEY:
     from getpass import getpass
     PHOENIX_API_KEY = getpass("Phoenix board API key: ").strip()
+from phoenix.client import Client
+phoenix_client = Client(base_url=PHOENIX_BOARD_URL, api_key=PHOENIX_API_KEY)
+try:
+    phoenix_client.projects.list()
+except Exception as exc:
+    if "401" not in str(exc) and "Unauthorized" not in str(exc):
+        raise
+    from getpass import getpass
+    print("Saved Phoenix key was rejected. Enter the participant board key from your desk card.")
+    PHOENIX_API_KEY = getpass("Phoenix board API key: ").strip()
+    phoenix_client = Client(base_url=PHOENIX_BOARD_URL, api_key=PHOENIX_API_KEY)
+    phoenix_client.projects.list()
 
 from utils import (CREATIVE_SYSTEM_PROMPT, HARDENED_SYSTEM_PROMPT, JUDGE_MODEL, GOLDEN,
                    MAX_TOKENS, client, df, run_agent, waterfall)
@@ -1495,8 +1519,6 @@ utils.set_span_tracer(
     tracer_provider.get_tracer(__name__),
     attributes={SpanAttributes.SESSION_ID: SEAT},
 )
-from phoenix.client import Client
-phoenix_client = Client(base_url=PHOENIX_BOARD_URL, api_key=PHOENIX_API_KEY)
 print("Phoenix project:", PHOENIX_EVAL_PROJECT)
 """, ("core",)))
 

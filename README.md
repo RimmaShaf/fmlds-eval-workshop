@@ -18,15 +18,15 @@
 
 ## The story in 60 seconds
 
-1. **Notebook 1 — Build your Agent** — a hand-rolled tool-calling agent (schema lookup, pandas analysis, financial rules, and charting) with a naive one-line system prompt. It demonstrates sign/refund mistakes, merchant aliases, and schema hallucination (`merchant_city` does not exist).
-2. **Notebook 2 — Tracing with Phoenix** — observability reveals what actually happened: first by reading the runs' own event logs (waterfall, token leaderboard), then with a real OpenTelemetry stack running *inside each participant's notebook* — tool cascades, retry bloat, token burn, and the "Mind Reader" sycophancy game.
+1. **Notebook 1 — Build your Agent** — a hand-rolled tool-calling agent (schema lookup, pandas analysis, financial rules, and charting) with a naive one-line system prompt. It demonstrates sign/refund mistakes, merchant aliases, and requests that the available data may not support.
+2. **Notebook 2 — Tracing with Phoenix** — uses OpenTelemetry and OpenInference instrumentation to capture LLM, agent, chain, and tool spans. Inspect tool inputs/outputs and compare a missing-information request with a successful analysis, then optionally publish traces to the shared board.
 3. **Notebook 3 — Evaluations** — an 11-case golden suite with frozen programmatic ground truth: execution checks (AST, no traceback), **router checks** (did the model call the right tool), numeric ground-truth matches, and an LLM-as-judge rubric. Baseline hardened agent: **10/11**. Inject a "creative & conversational" prompt + `temperature=0.7`: **6/11**, caught automatically — and the same suite runs as the CI gate.
 
 ## Repo map
 
 ```
 01_build_your_agent.ipynb      notebook 1: config, tools, the router loop, the three traps
-02_tracing_with_phoenix.ipynb  notebook 2: event logs -> local Phoenix -> Mind Reader -> publish to board
+02_tracing_with_phoenix.ipynb  notebook 2: OpenTelemetry spans -> local Phoenix -> trace inspection -> publish to board
 03_evaluations.ipynb           notebook 3: golden suite, router checks, regression gate, beat-11/11, CI
 utils.py                       canonical agent + eval harness (GENERATED; imported by notebooks 2-3 and CI)
 data/transactions.csv           synthetic ledger, 2,500 rows, May–Oct 2026 (seed 42)
@@ -74,7 +74,7 @@ Paste `infra/seat_keys.csv` rows into the **view-only** Google Sheet; print desk
 
 **3. CI gate:** already wired (`.github/workflows/evals.yml`): dataset integrity check, deterministic mock golden-suite gate, and a self-test proving the gate catches a known-bad regression. For scheduled live-model evals through the workshop gateway, add a `LITELLM_API_KEY` GitHub secret.
 
-**4. Room-wide observability (Phoenix board):** the gateway ships every request's trace to a central self-hosted Phoenix app (Tokyo, `infra/DEPLOYMENT.md` has the full deploy runbook) via the LiteLLM `arize_phoenix` callback — server-side capture, zero participant setup, tagged per seat. Participants' own tracing runs in their notebooks (notebook 2 launches a local Phoenix per runtime) and can be published to the board with the optional end-of-notebook cell using the `PHOENIX_BOARD_URL` from the desk card.
+**4. Room-wide observability (Phoenix board):** the gateway ships every request's trace to a central self-hosted Phoenix app (Tokyo, `infra/DEPLOYMENT.md` has the full deploy runbook) via the LiteLLM `arize_phoenix` callback — server-side capture, zero participant setup, tagged per seat. Participants' own tracing runs in their notebooks (notebook 2 launches a local Phoenix per runtime) and can optionally publish traces to the fixed board URL using the `PHOENIX_API_KEY` from the desk card.
 
 **5. Emergency kit:** 5 mobile hotspots + 5 reserve master-pool keys (create with `make_seat_keys.py --seats 5 --budget 5`).
 

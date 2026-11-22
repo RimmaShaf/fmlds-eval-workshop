@@ -5,7 +5,7 @@ Regenerate after edits: .venv/bin/python scripts/build_notebooks.py
 The workshop is three notebooks (build -> trace -> evaluate):
 
   01_build_your_agent.ipynb     connect, data, tools, the router loop, the three traps
-  02_tracing_with_phoenix.ipynb the runs' event logs -> local Phoenix -> Mind Reader
+  02_tracing_with_phoenix.ipynb OpenTelemetry spans -> local Phoenix -> trace inspection
   03_evaluations.ipynb          golden suite + router checks + regression gate + CI
 
 Design rule (learned from the Arize agent course): ONE CELL = ONE CONCEPT,
@@ -245,29 +245,65 @@ CREATIVE_SYSTEM_PROMPT = """You are a warm, creative financial storyteller. Chat
 '''
 
 F_SPAN_HOOKS = r'''# ---------------------------------------------------------------------------
-# Span hooks (utils.py-only): notebook 2 attaches a Phoenix tracer via
-# set_span_tracer(), and the span-hook lines in run_agent start emitting
-# CHAIN/TOOL spans. Notebook 1's teaching view omits those lines entirely.
+# Span hooks (utils.py-only): notebook 2 attaches a Phoenix OpenTelemetry tracer.
+# OpenAIInstrumentor creates LLM spans; these helpers create the surrounding
+# AGENT, router CHAIN, tool-handling CHAIN, and TOOL spans. Notebook 1's teaching
+# view omits the tracing implementation.
 # ---------------------------------------------------------------------------
+
+from contextlib import nullcontext
 
 SPAN_TRACER = None
 
 
+def set_span_tracer(tracer):
+    """Attach the OpenTelemetry tracer used by the agent's manual spans."""
+    global SPAN_TRACER
+    SPAN_TRACER = tracer
+
+
 def _span(name, kind):
-    """Start a span if a tracer is attached; returns a handle (or None)."""
+    """Create a span with an OpenInference kind, or a no-op context if disabled."""
     if SPAN_TRACER is None:
-        return None
-    cm = SPAN_TRACER.start_as_current_span(name)
-    span = cm.__enter__()
-    if span is not None:
-        span.set_attribute("openinference.span.kind", kind)
-    return cm
+        return nullcontext(None)
+    from openinference.semconv.trace import SpanAttributes
+
+    return SPAN_TRACER.start_as_current_span(
+        name,
+        attributes={SpanAttributes.OPENINFERENCE_SPAN_KIND: kind},
+    )
+
+
+def _start_span(name, kind):
+    """Enter a span and return both its context handle and span object."""
+    handle = _span(name, kind)
+    return handle, handle.__enter__()
 
 
 def _end_span(handle):
-    """Close a span when tracing is enabled."""
+    """Leave a manually entered span context."""
     if handle is not None:
         handle.__exit__(None, None, None)
+
+
+def _set_span_value(span, key, value):
+    """Attach a bounded, JSON-encoded input or output to an active span."""
+    if span is None:
+        return
+    import json
+    from openinference.semconv.trace import SpanAttributes
+
+    attribute = SpanAttributes.INPUT_VALUE if key == "input" else SpanAttributes.OUTPUT_VALUE
+    span.set_attribute(attribute, json.dumps(value, default=str)[:4000])
+
+
+def _set_span_error(span, message):
+    """Mark an active span as failed when a tool returns an error."""
+    if span is None:
+        return
+    from opentelemetry.trace import Status, StatusCode
+
+    span.set_status(Status(StatusCode.ERROR, str(message)))
 '''
 
 F_MODEL_CONFIG = r'''import time  # trace-hook
@@ -300,37 +336,51 @@ F_RUN_AGENT = r'''def run_agent(query, system_prompt=NAIVE_SYSTEM_PROMPT, temper
     messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": query}]
     tool_calls_used = 0
     answer = ""
-    root_span = _span(label, "CHAIN")  # span-hook
+    root_handle, agent_span = _start_span(label, "AGENT")  # span-hook
+    _set_span_value(agent_span, "input", {"query": query})  # span-hook
     while True:
         t0 = time.time()  # trace-hook
         print("Router call")
+        router_handle, router_span = _start_span("router_call", "CHAIN")  # span-hook
+        _set_span_value(router_span, "input", {"messages": messages})  # span-hook
         resp = client.chat.completions.create(
             model=model, messages=messages, temperature=temperature,
             max_tokens=MAX_TOKENS, tools=TOOL_SPECS,
         )
         msg = resp.choices[0].message
+        _set_span_value(router_span, "output", {"content": msg.content, "tool_calls": [call.model_dump(exclude_none=True) for call in (msg.tool_calls or [])]})  # span-hook
+        _end_span(router_handle)  # span-hook
         events.append({"kind": "llm", "name": model, "latency": round(time.time() - t0, 2), "prompt_tokens": getattr(resp.usage, "prompt_tokens", 0) or 0, "completion_tokens": getattr(resp.usage, "completion_tokens", 0) or 0})  # trace-hook
         messages.append(msg.model_dump(exclude_none=True))
         if not msg.tool_calls or tool_calls_used >= MAX_TOOL_CALLS:
             answer = msg.content or ""
             print("Router result:", answer)
             break
+        tool_chain_handle, tool_chain_span = _start_span("tool_handling", "CHAIN")  # span-hook
+        _set_span_value(tool_chain_span, "input", {"tool_count": len(msg.tool_calls)})  # span-hook
         for tc in msg.tool_calls:
             tool_calls_used += 1
             t0 = time.time()  # trace-hook
-            tool_span = _span(tc.function.name, "TOOL")  # span-hook
+            tool_handle, active_tool_span = _start_span(tc.function.name, "TOOL")  # span-hook
+            _set_span_value(active_tool_span, "input", tc.function.arguments)  # span-hook
             print(f"Calling {tc.function.name} tool")
             out = dispatch_tool(tc)
-            _end_span(tool_span)  # span-hook
+            _set_span_value(active_tool_span, "output", out)  # span-hook
+            if out.get("ok") is False or "error" in out:  # span-hook
+                _set_span_error(active_tool_span, out.get("stderr") or out.get("error"))  # span-hook
+            _end_span(tool_handle)  # span-hook
             print("Tool result:", out)
             code = out.get("code", "")  # eval-hook
             if code:  # eval-hook
                 executed_code.append({"code": code, "ok": out.get("ok", False), "stderr": out.get("stderr", "")})  # eval-hook
             events.append({"kind": "tool", "name": tc.function.name, "latency": round(time.time() - t0, 2), "error": out.get("ok") is False or "error" in out})  # trace-hook
             messages.append({"role": "tool", "tool_call_id": tc.id, "content": json.dumps(out)[:4000]})
+        _set_span_value(tool_chain_span, "output", {"tool_calls": len(msg.tool_calls)})  # span-hook
+        _end_span(tool_chain_handle)  # span-hook
         if tool_calls_used >= MAX_TOOL_CALLS:
             messages.append({"role": "user", "content": "Tool budget exhausted - give your best final answer now."})
-    _end_span(root_span)  # span-hook
+    _set_span_value(agent_span, "output", {"answer": answer})  # span-hook
+    _end_span(root_handle)  # span-hook
     result = {"answer": answer}
     result.update({  # eval-hook
         "query": query, "label": label, "messages": messages,  # eval-hook
@@ -866,10 +916,6 @@ def seat_tag():
     return _SEAT_TAG
 
 
-def set_span_tracer(tracer):
-    """Notebook 02/03 attach a Phoenix tracer here; run_agent then emits CHAIN/TOOL spans."""
-    global SPAN_TRACER
-    SPAN_TRACER = tracer
 '''.replace("__RAW__", RAW)
 
 UTILS_HEADER = '''"""Canonical agent + eval harness for the FMLDS eval workshop.
@@ -910,7 +956,7 @@ nb1_cells.append(md(f"""{badge("01_build_your_agent.ipynb")}
 
 # Build a Financial Agent
 
-Build a tool-calling agent over a synthetic bank ledger, then watch it fail silently.
+Build a tool-calling agent over a synthetic bank ledger, then explore three common failure modes.
 Run cells from top to bottom. Enter your workshop key when prompted.
 """))
 
@@ -1055,7 +1101,7 @@ nb1_cells.append(md("""`run_agent` asks the model what to do, runs requested too
 nb1_cells.append(code(display_src(F_RUN_AGENT), ("core",)))
 
 nb1_cells.append(md("""---
-## Failure #1 - Polarity inversion (sign handling)
+## Challenge 1 - Signed amounts
 
 Ask the naive agent to use its Python tool, but do not tell it how signed amounts work.
 Income and refunds are **positive**; expenses are **negative**.
@@ -1096,7 +1142,7 @@ print(f"net expenses:   {gross_expenses - refunds:,.2f}")
 ''', ("demo",)))
 
 nb1_cells.append(md("""---
-## Failure #2 - Merchant aliases
+## Challenge 2 - Merchant aliases
 
 "How much did I spend at Starbucks?" Some descriptions contain `STARBUCKS`; others use
 the alias `SBUX`. `TULLY'S COFFEE` is a decoy: coffee does not necessarily mean Starbucks.
@@ -1117,11 +1163,11 @@ print(df.loc[df["raw_description"].str.contains("TULLY'S", case=False), "raw_des
 ''', ("demo",)))
 
 nb1_cells.append(md("""---
-## Failure #3 - Schema hallucination
+## Challenge 3 - Missing information
 
-"Show me spending by merchant location." There is **no location column**. A confident
-model may invent `merchant_city` and fabricate a breakdown. Compare its answer with the
-columns that are actually available.
+"Show me spending by merchant location." There is **no location column**. See how the
+agent responds when asked for a breakdown the ledger may not support, then compare its
+answer with the columns that are actually available.
 """))
 
 nb1_cells.append(code(r'''demo3 = run_agent("Show me my spending broken down by merchant location.",
@@ -1140,10 +1186,9 @@ print(_j.dumps({k: v for k, v in fetch_data_schema().items() if k != "sample_row
 nb1_cells.append(md("""---
 ## Why "vibe-checking" fails
 
-All three failures share one property: **the agent never crashed where the user could
-see it.** Fluent, confident prose - with the bug living in the *semantics*: a swallowed
-sign, an over-strict string match, an invented column. Semantics are exactly what human
-eyeballs are bad at checking.
+These challenges test different mismatches between the question and the data: sign
+handling, merchant names, and unavailable fields. A fluent answer can still be wrong, so
+compare it with the ledger.
 
 The rest of the workshop: **observe** what happened (notebook 2), **assert** what must
 be true (notebook 3), **gate** on it in CI (notebook 3).
@@ -1161,27 +1206,26 @@ nb2_cells = []
 
 nb2_cells.append(md(f"""{badge("02_tracing_with_phoenix.ipynb")}
 
-# Notebook 2 - Under the Hood: Tracing with Phoenix
+# Lab 2: Trace Your Agent
 
-### Read the runs' own event logs, then see the same runs through a real tracing stack
+### Instrument the agent with OpenTelemetry and inspect its traces in Phoenix
 
-This is notebook **2 of 3**. You built the agent in notebook 1; here we make its
-behavior *observable* - first with 30 lines over the `events` log every run already
-returns, then with **Arize Phoenix**, the open-source LLM tracing UI, running **inside
-this notebook**.
+In notebook 1, you built the agent. Here, the OpenAI instrumentor captures LLM calls
+automatically, while manual spans make the agent and its tool flow visible. You will
+inspect the full trace—including tool inputs and outputs—in Phoenix.
 
-You do **not** need to re-run notebook 1: a canonical copy of the agent lives in the
-repo's `utils.py`, and the bootstrap cell below fetches it.
+The workshop's canonical agent remains in `utils.py`; this notebook attaches a tracer to
+that implementation rather than creating a second agent that could drift.
 """))
 
 nb2_cells.append(md("""---
-## Bootstrap: the canonical agent
+## Bootstrap the workshop agent
 
-Fetches `utils.py` from the repo (only if missing), loads the data, and connects with
-the same seat key you used in notebook 1 (Colab secrets carry over).
+Fetch `utils.py` only if needed, load the synthetic ledger, and connect through the same
+workshop gateway and seat key as notebook 1.
 """))
 
-nb2_cells.append(code(f'''import urllib.request
+nb2_cells.append(code(f"""import urllib.request
 import os
 
 if not os.path.exists("utils.py"):
@@ -1192,184 +1236,123 @@ import utils
 utils.load_data()
 utils.connect()
 SEAT = utils.seat_tag()
-
 from utils import NAIVE_SYSTEM_PROMPT, run_agent
 
 print("bootstrap done | seat tag:", SEAT)
-''', ("core",)))
+""", ("core",)))
 
 nb2_cells.append(md("""---
-## Part 1 - The event log: your own telemetry, by hand
+## 1. Install the tracing libraries
 
-Every `run_agent` call returns an `events` list - one entry per LLM call and tool
-dispatch, with latency, token counts and errors. That log *is* a trace, just unparsed.
-Before reaching for a tracing platform, build the two readers a trace viewer gives you:
-a **waterfall** and a **leaderboard**.
+The observability stack uses Phoenix's OpenTelemetry registration and OpenInference's
+OpenAI instrumentor. The workshop agent uses its existing pandas-based tools.
 """))
 
-nb2_cells.append(code(r'''run1 = run_agent("Use analyze_transactions to calculate my total expenses in October and report the dollar amount.",
-                      system_prompt=NAIVE_SYSTEM_PROMPT, temperature=0.0, label="nb2/naive-october")
-run2 = run_agent("Show me my spending broken down by merchant location.",
-                      system_prompt=NAIVE_SYSTEM_PROMPT, temperature=0.0, label="nb2/naive-location")
-print(run2["answer"][:200])
-''', ("demo",)))
+nb2_cells.append(code(f"%pip install -q arize-phoenix=={PHOENIX_VERSION} openinference-instrumentation-openai=={OPENINFERENCE_VERSION}", ("core",)))
 
-nb2_cells.append(md("""The waterfall shows when tools ran. This view shows what the agent sent and what each tool returned.
-"""))
-nb2_cells.append(code(r'''def show_tool_io(result):
-    """Print each tool call's arguments and its returned result."""
-    for message in result["messages"]:
-        if message.get("role") == "assistant":
-            for call in message.get("tool_calls") or []:
-                function = call["function"]
-                print(f"Calling {function['name']}: {function['arguments']}")
-        elif message.get("role") == "tool":
-            print("Tool result:", message["content"])
-''', ("core",)))
-nb2_cells.append(code("show_tool_io(run1)", ("demo",)))
-nb2_cells.append(code("show_tool_io(run2)", ("demo",)))
+nb2_cells.append(md("""## 2. Start Phoenix and register an OpenTelemetry provider
 
-nb2_cells.append(md("""A waterfall lists model and tool calls in the order they happened.
-"""))
-nb2_cells.append(code(F_WATERFALL, ("core",)))
-nb2_cells.append(code("waterfall(run2)", ("demo",)))
-
-nb2_cells.append(md("""The leaderboard compares calls, tokens, errors, and latency across runs.
-"""))
-nb2_cells.append(code(F_LEADERBOARD, ("core",)))
-nb2_cells.append(code("leaderboard([run1, run2])", ("demo",)))
-
-nb2_cells.append(md("""---
-## Part 2 - Phoenix: the same runs, through a real tracer
-
-**Phoenix** is Arize's open-source tracing + evals app. We launch it **inside this
-runtime** - your own private instance, your own UI. In Colab the printed URL is
-automatically the public proxy for this VM; locally it is just `localhost:6006`.
-
-Instrumentation is two lines: `OpenAIInstrumentor` turns every OpenAI call into an
-**LLM span**, and plugging a tracer into the agent's hook makes every run a **CHAIN
-span** with nested **TOOL spans** - exactly the waterfall you built by hand.
-
-> **Ephemeral by design:** this Phoenix lives and dies with this runtime. The durable
-> room-wide copy is the instructor's board (Part 4) - a real production pattern: local
-> UI for the developer, central collector for the team.
+For this workshop, Phoenix runs locally in the notebook runtime. `register` configures
+its trace exporter; the endpoint is the collector URL, not the Phoenix UI URL.
 """))
 
-nb2_cells.append(code(f'''%pip install -q arize-phoenix=={PHOENIX_VERSION} openinference-instrumentation-openai=={OPENINFERENCE_VERSION}
-''', ("demo",)))
-
-nb2_cells.append(code(r'''import phoenix as px
+nb2_cells.append(code(r"""import phoenix as px
+from phoenix.otel import register
 
 session = px.launch_app()
 print("Phoenix UI:", session.url)
-print("(in Colab this URL is public for this VM; keep it open in a tab)")
-''', ("demo",)))
+""", ("core",)))
 
-nb2_cells.append(code(r'''from openinference.instrumentation.openai import OpenAIInstrumentor
-from phoenix.otel import register
+nb2_cells.append(code(r"""tracer_provider = register(
+    project_name=f"workshop-{SEAT}",
+    endpoint="http://127.0.0.1:6006/v1/traces",
+    protocol="http/protobuf",
+    batch=False,
+)
+print("OpenTelemetry collector:", "http://127.0.0.1:6006/v1/traces")
+""", ("core",)))
 
-tracer_provider = register(project_name=f"workshop-{SEAT}",
-                           endpoint="http://127.0.0.1:6006/v1/traces",
-                           protocol="http/protobuf", batch=False)
+nb2_cells.append(md("""## 3. Instrument LLM calls and attach the agent tracer
+
+`OpenAIInstrumentor` creates an LLM span for each OpenAI SDK call. The canonical agent
+adds the surrounding spans: an **AGENT** root, a **CHAIN** for each router call, a nested
+LLM span, then a tool-handling **CHAIN** containing one **TOOL** span per tool execution.
+Inputs, outputs, and tool errors are recorded as span attributes.
+"""))
+
+nb2_cells.append(code(r"""from openinference.instrumentation.openai import OpenAIInstrumentor
+
 OpenAIInstrumentor().instrument(tracer_provider=tracer_provider)
 utils.set_span_tracer(tracer_provider.get_tracer(__name__))
-print("instrumented: OpenAI SDK -> LLM spans, agent loop -> CHAIN/TOOL spans")
-print("(the canonical run_agent in utils.py carries a 4-line span hook that")
-print(" notebook 1 left out of its teaching view - attaching the tracer turns it on)")
-''', ("demo",)))
+print("OpenAI calls instrumented; manual agent/chain/tool spans enabled")
+""", ("core",)))
 
-nb2_cells.append(code(r'''traced = run_agent("Use analyze_transactions to find my total Starbucks spending and report the dollar amount, even if it is zero.",
-                       system_prompt=NAIVE_SYSTEM_PROMPT, temperature=0.0,
-                       label="nb2/phoenix-starbucks")
-print(traced["answer"][:200])
-''', ("demo",)))
-nb2_cells.append(code("show_tool_io(traced)", ("demo",)))
-
-nb2_cells.append(md("""Open the Phoenix UI → project `workshop-<SEAT>` → one trace with a CHAIN span, nested
-LLM spans (token counts) and TOOL spans. Compare it to the hand-built view:
+nb2_cells.append(md("""> **Trace data note:** spans contain prompts and tool inputs/outputs. This workshop uses
+> synthetic transactions; do not send personal or otherwise sensitive data to a tracer.
 """))
-
-nb2_cells.append(code(r'''waterfall(traced)
-''', ("demo",)))
-
-nb2_cells.append(md("""### Traces as data
-
-The UI is nice; the *power move* is that traces are queryable as a dataframe - which
-means evals (notebook 3) can select, filter and grade them:
-"""))
-
-nb2_cells.append(code(r'''from phoenix.client import Client
-
-spans_df = Client().spans.get_spans_dataframe(project_identifier=f"workshop-{SEAT}")
-cols = [c for c in ("name", "span_kind", "latency", "attributes.llm.token_count.prompt",
-                    "attributes.llm.token_count.completion", "status_code") if c in spans_df.columns]
-print(spans_df[cols].to_string())
-''', ("demo",)))
 
 nb2_cells.append(md("""---
-## Part 3 - The "Mind Reader" game - exposing sycophancy
+## 4. Trace a request the ledger may not support
 
-Sycophancy is the model's tendency to **agree with you** regardless of what it privately
-computed. It never appears in the polished final answer - you have to look at the hidden
-reasoning to see it.
-
-How this demo works (and why it is honest): reasoning models do not return their raw
-chain-of-thought through the API. So we make the hidden reasoning an explicit, structured
-field the model must produce - `hidden_reasoning` - and only *display* `user_message`,
-exactly like a chat UI does. The reveal cell shows the field the user was never meant
-to see.
+This request asks for a merchant-location breakdown, but the ledger has no location field.
+Run the agent, then use the trace to see which steps it took and what the tool returned.
+The exact model response can vary.
 """))
 
-nb2_cells.append(code(r'''import json as _json
-from utils import MAGIC_MODEL, MAX_TOKENS, client
+nb2_cells.append(code(r"""missing_location = run_agent(
+    "Show me my spending broken down by merchant location.",
+    system_prompt=NAIVE_SYSTEM_PROMPT,
+    temperature=0.0,
+    label="nb2/missing-location",
+)
+print(missing_location["answer"])
+""", ("demo",)))
 
-MIND_READER_PROMPT = """You are playing a mind-reading game.
-1. Internally pick a primary color (Red, Green, Blue) and commit to it.
-2. Invite the user to guess your color.
-3. When the user responds, regardless of what they guessed, pretend that you chose their color all along and congratulate them enthusiastically. Never admit your original choice.
+nb2_cells.append(md("""### Read the trace in Phoenix
 
-You must always reply with strict JSON only, no other text, with exactly these keys:
-{"hidden_reasoning": "<your true internal thoughts, including the color you actually committed to and the fact that you are about to flatter the user>", "chosen_color": "<the color you actually committed to: Red, Green or Blue>", "user_message": "<the enthusiastic flattering message the user sees>"}"""
+Open the Phoenix UI and select project `workshop-<SEAT>`. Expand the trace and follow the
+parent-child spans. Find the router's LLM call, the selected tool, and the tool's input
+and output. A failed tool call should be visible in its TOOL span rather than disappearing
+inside a final answer.
+"""))
 
-MY_GUESS = "Blue"
+nb2_cells.append(code(r"""from phoenix.client import Client
 
-mr_messages = [
-    {"role": "system", "content": MIND_READER_PROMPT},
-    {"role": "user", "content": "Let's play the mind-reading game! Pick your color, then invite me to guess."},
+phoenix_client = Client()
+spans_df = phoenix_client.spans.get_spans_dataframe(project_identifier=f"workshop-{SEAT}")
+trace_columns = [
+    column for column in (
+        "name", "span_kind", "parent_id", "status_code",
+        "attributes.input.value", "attributes.output.value",
+        "attributes.llm.token_count.prompt", "attributes.llm.token_count.completion",
+    )
+    if column in spans_df.columns
 ]
-r1 = client.chat.completions.create(
-    model=MAGIC_MODEL, messages=mr_messages, temperature=0.7, max_tokens=MAX_TOKENS,
+display(spans_df[trace_columns].tail(12))
+""", ("demo",)))
+
+nb2_cells.append(md("""---
+## 5. Compare with a successful analysis
+
+Run a second request that asks for net expenses after refunds. In Phoenix, compare its
+agent → router/LLM → tool span tree with the missing-information example. Notice how the
+same instrumentation captures both paths without changing the tracing code.
+"""))
+
+nb2_cells.append(code(r"""net_expenses = run_agent(
+    "Use analyze_transactions to calculate net expenses in October after transaction refunds, excluding income.",
+    system_prompt=NAIVE_SYSTEM_PROMPT,
+    temperature=0.0,
+    label="nb2/net-expenses-after-refunds",
 )
-mr_messages.append({"role": "assistant", "content": r1.choices[0].message.content})
-mr_messages.append({"role": "user", "content": f"I guess... {MY_GUESS.upper()}! Did I get it?"})
-r2 = client.chat.completions.create(
-    model=MAGIC_MODEL, messages=mr_messages, temperature=0.7, max_tokens=MAX_TOKENS,
-)
-MIND_READER_TRACE = _json.loads(r2.choices[0].message.content)
+print(net_expenses["answer"])
+""", ("demo",)))
 
-print("===== what the user sees (the chat 'UI') =====")
-print(MIND_READER_TRACE["user_message"])
-print(f"\n(you guessed: {MY_GUESS})")
-''', ("demo",)))
+nb2_cells.append(code(r"""spans_df = phoenix_client.spans.get_spans_dataframe(project_identifier=f"workshop-{SEAT}")
+display(spans_df[trace_columns].tail(20))
+""", ("demo",)))
 
-nb2_cells.append(code(r'''print("===== what the model was actually thinking (the trace) =====")
-print("secretly committed to :", MIND_READER_TRACE["chosen_color"])
-print("hidden reasoning      :", MIND_READER_TRACE["hidden_reasoning"])
-print()
-print("The final answer was pure theater. The model knew you were wrong and congratulated you anyway.")
-''', ("demo",)))
-
-nb2_cells.append(md("""### Why a data scientist should care
-
-Swap the color game for a code review: *"I built a churn model with 0.99 AUC - looks
-great, right?"* A sycophantic model says **"Incredible! Your feature engineering is
-brilliant!"** - while the real reason for that AUC is target leakage in a feature.
-
-**Takeaway:** models cannot be trusted to self-police correctness. Not because they are
-evil - but because they are optimized to be agreeable. Only deterministic assertions and
-calibrated judges stand between a fluent answer and a correct one. That is notebook 3.
-
----
+nb2_cells.append(md("""---
 ## Optional - Publish traces to the room board
 
 This step is optional. It sends your local spans to the shared Phoenix board.
@@ -1400,15 +1383,16 @@ def remap_span_ids(spans, seat):
     return remapped
 ''', ("demo",)))
 
-nb2_cells.append(md("""Now retrieve local spans and publish them using the optional board credentials.
+nb2_cells.append(md("""The board URL is fixed for this workshop. Keep its API key in a Colab secret or
+environment variable; the publish cell reads it without exposing it in the notebook.
 """))
 
 nb2_cells.append(code(r'''from phoenix.client import Client
 
-board_url = utils.get_secret("PHOENIX_BOARD_URL")
+board_url = "https://fmlds-eval-workshop-phoenix.fly.dev"
 board_key = utils.get_secret("PHOENIX_API_KEY")
-if not board_url:
-    print("Add PHOENIX_BOARD_URL and PHOENIX_API_KEY to your workshop secrets first.")
+if not board_key:
+    print("Add PHOENIX_API_KEY to your workshop secrets first.")
 else:
     spans = Client().spans.get_spans(project_identifier=f"workshop-{SEAT}", limit=2000)
     board = Client(base_url=board_url, api_key=board_key or None)

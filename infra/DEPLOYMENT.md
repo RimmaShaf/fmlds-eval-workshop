@@ -393,8 +393,8 @@ the desk cards as the `PHOENIX_API_KEY` Colab secret.
    `gateway` project shows a trace whose spans carry
    `litellm.metadata.user_api_key_alias: "seat-01"`.
 2. Run notebook 2's publish path once (locally or in Colab) with the desk-card
-   `PHOENIX_BOARD_URL` + `PHOENIX_API_KEY`; project `seat-<tag>` appears with
-   the full CHAIN/TOOL tree.
+   `PHOENIX_API_KEY`; the board URL is configured in the notebook. Project
+   `seat-<tag>` appears with the full CHAIN/TOOL tree.
 3. Log into the board UI — see the human task below — and confirm the
    projector view filters by seat alias.
 
@@ -403,10 +403,9 @@ the desk cards as the `PHOENIX_API_KEY` Colab secret.
 - **Set the admin password.** First UI login is `admin@localhost` / `admin`,
   and Phoenix prompts you to change it. Choose a real password, store it in
   your password manager — this is the instructor's board UI credential.
-- **Desk cards:** each card carries (a) the key-sheet short URL, (b) the board
-  values for notebook 2's optional publish cell: `PHOENIX_BOARD_URL`
-  (`https://fmlds-eval-workshop-phoenix.fly.dev`) and `PHOENIX_API_KEY` (the
-  participants key from `infra/phoenix_board.key`).
+- **Desk cards:** each card carries (a) the key-sheet short URL and (b) the
+  `PHOENIX_API_KEY` for notebook 2's optional publish cell (the participant
+  key from `infra/phoenix_board.key`). The notebook contains the public board URL.
 
 ⚠️ **Why the publish cell remaps span ids:** the notebook tracer generates
 *deterministic* ids — every seat running the same cells produces identical
@@ -421,8 +420,8 @@ in the room would succeed. The remap lives inside notebook 2's publish cell.
 The only thing that cannot be verified from the repo itself is the real Colab
 experience. Run all three notebooks end-to-end as a participant would.
 
-**Prep (2 min):** a pilot seat key; the board values (`PHOENIX_BOARD_URL`,
-`PHOENIX_API_KEY` from `infra/phoenix_board.key`). The connect cells prompt for
+**Prep (2 min):** a pilot seat key and `PHOENIX_API_KEY` from
+`infra/phoenix_board.key`. The connect cells prompt for
 the seat key — paste it once per notebook (one paste per runtime session).
 Optional zero-paste setup: set the three as Colab secrets (🔑 panel, switch
 **Notebook access** on in each notebook) — notebooks 2–3 read them automatically
@@ -438,13 +437,12 @@ secret and do the live pass.
       **2,500 rows from the raw GitHub URL** → compare the agent's answers with
       the signed-amount, fragmented-merchant, and missing-location examples.
 - [ ] **Notebook 2 (10 min, live):** bootstrap fetches `utils.py` from the repo
-      → `%pip` installs phoenix 22.0.0 cleanly → `launch_app()` prints a
-      **Colab-proxied URL** (not localhost) → click it: empty project
-      `workshop-<tag>` → instrument → traced Starbucks run → UI shows one
-      trace with nested CHAIN/TOOL + LLM spans (token counts visible) → spans
-      dataframe prints → Mind Reader reveals the committed-vs-claimed color →
-      publish cell prints `published to the board` → board UI shows project
-      `seat-<tag>` with the tree
+       → `%pip` installs Phoenix 22.0.0 and OpenInference instrumentation →
+       `launch_app()` prints a **Colab-proxied URL** → register the local OTLP
+       endpoint and instrument OpenAI calls → traces show an AGENT root, nested
+       router CHAIN/LLM spans, and tool-handling CHAIN/TOOL spans with I/O →
+       compare missing-location and refund-netting runs → optional publish cell
+       sends the spans to board project `seat-<tag>`
 - [ ] **Notebook 3 (15 min, live):** bootstrap → baseline suite (expect the 15
       RPM seat cap to pace it to ~5 min — that's the realistic participant
       experience; for a faster rehearsal use a `--rpm 60` pilot key) →
@@ -473,7 +471,7 @@ secret and do the live pass.
       one live smoke test, charge the 5 mobile hotspots
 - [ ] Board verification checklist (Phase 4b) green — projector shows the board
 - [ ] Desk cards printed with seat numbers, key-sheet URL, and the board
-      `PHOENIX_BOARD_URL` / `PHOENIX_API_KEY` values
+      `PHOENIX_API_KEY`
 - [ ] View-only Google Sheet shared (link, view-only — not "anyone can edit")
 - [ ] Projector: instructor notebook using the workshop gateway
 

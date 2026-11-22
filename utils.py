@@ -73,10 +73,6 @@ def seat_tag():
     return _SEAT_TAG
 
 
-def set_span_tracer(tracer):
-    """Notebook 02/03 attach a Phoenix tracer here; run_agent then emits CHAIN/TOOL spans."""
-    global SPAN_TRACER
-    SPAN_TRACER = tracer
 
 
 
@@ -271,29 +267,65 @@ CREATIVE_SYSTEM_PROMPT = """You are a warm, creative financial storyteller. Chat
 
 
 # ---------------------------------------------------------------------------
-# Span hooks (utils.py-only): notebook 2 attaches a Phoenix tracer via
-# set_span_tracer(), and the span-hook lines in run_agent start emitting
-# CHAIN/TOOL spans. Notebook 1's teaching view omits those lines entirely.
+# Span hooks (utils.py-only): notebook 2 attaches a Phoenix OpenTelemetry tracer.
+# OpenAIInstrumentor creates LLM spans; these helpers create the surrounding
+# AGENT, router CHAIN, tool-handling CHAIN, and TOOL spans. Notebook 1's teaching
+# view omits the tracing implementation.
 # ---------------------------------------------------------------------------
+
+from contextlib import nullcontext
 
 SPAN_TRACER = None
 
 
+def set_span_tracer(tracer):
+    """Attach the OpenTelemetry tracer used by the agent's manual spans."""
+    global SPAN_TRACER
+    SPAN_TRACER = tracer
+
+
 def _span(name, kind):
-    """Start a span if a tracer is attached; returns a handle (or None)."""
+    """Create a span with an OpenInference kind, or a no-op context if disabled."""
     if SPAN_TRACER is None:
-        return None
-    cm = SPAN_TRACER.start_as_current_span(name)
-    span = cm.__enter__()
-    if span is not None:
-        span.set_attribute("openinference.span.kind", kind)
-    return cm
+        return nullcontext(None)
+    from openinference.semconv.trace import SpanAttributes
+
+    return SPAN_TRACER.start_as_current_span(
+        name,
+        attributes={SpanAttributes.OPENINFERENCE_SPAN_KIND: kind},
+    )
+
+
+def _start_span(name, kind):
+    """Enter a span and return both its context handle and span object."""
+    handle = _span(name, kind)
+    return handle, handle.__enter__()
 
 
 def _end_span(handle):
-    """Close a span when tracing is enabled."""
+    """Leave a manually entered span context."""
     if handle is not None:
         handle.__exit__(None, None, None)
+
+
+def _set_span_value(span, key, value):
+    """Attach a bounded, JSON-encoded input or output to an active span."""
+    if span is None:
+        return
+    import json
+    from openinference.semconv.trace import SpanAttributes
+
+    attribute = SpanAttributes.INPUT_VALUE if key == "input" else SpanAttributes.OUTPUT_VALUE
+    span.set_attribute(attribute, json.dumps(value, default=str)[:4000])
+
+
+def _set_span_error(span, message):
+    """Mark an active span as failed when a tool returns an error."""
+    if span is None:
+        return
+    from opentelemetry.trace import Status, StatusCode
+
+    span.set_status(Status(StatusCode.ERROR, str(message)))
 
 
 
@@ -329,37 +361,51 @@ def run_agent(query, system_prompt=NAIVE_SYSTEM_PROMPT, temperature=0.0, model=N
     messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": query}]
     tool_calls_used = 0
     answer = ""
-    root_span = _span(label, "CHAIN")  # span-hook
+    root_handle, agent_span = _start_span(label, "AGENT")  # span-hook
+    _set_span_value(agent_span, "input", {"query": query})  # span-hook
     while True:
         t0 = time.time()  # trace-hook
         print("Router call")
+        router_handle, router_span = _start_span("router_call", "CHAIN")  # span-hook
+        _set_span_value(router_span, "input", {"messages": messages})  # span-hook
         resp = client.chat.completions.create(
             model=model, messages=messages, temperature=temperature,
             max_tokens=MAX_TOKENS, tools=TOOL_SPECS,
         )
         msg = resp.choices[0].message
+        _set_span_value(router_span, "output", {"content": msg.content, "tool_calls": [call.model_dump(exclude_none=True) for call in (msg.tool_calls or [])]})  # span-hook
+        _end_span(router_handle)  # span-hook
         events.append({"kind": "llm", "name": model, "latency": round(time.time() - t0, 2), "prompt_tokens": getattr(resp.usage, "prompt_tokens", 0) or 0, "completion_tokens": getattr(resp.usage, "completion_tokens", 0) or 0})  # trace-hook
         messages.append(msg.model_dump(exclude_none=True))
         if not msg.tool_calls or tool_calls_used >= MAX_TOOL_CALLS:
             answer = msg.content or ""
             print("Router result:", answer)
             break
+        tool_chain_handle, tool_chain_span = _start_span("tool_handling", "CHAIN")  # span-hook
+        _set_span_value(tool_chain_span, "input", {"tool_count": len(msg.tool_calls)})  # span-hook
         for tc in msg.tool_calls:
             tool_calls_used += 1
             t0 = time.time()  # trace-hook
-            tool_span = _span(tc.function.name, "TOOL")  # span-hook
+            tool_handle, active_tool_span = _start_span(tc.function.name, "TOOL")  # span-hook
+            _set_span_value(active_tool_span, "input", tc.function.arguments)  # span-hook
             print(f"Calling {tc.function.name} tool")
             out = dispatch_tool(tc)
-            _end_span(tool_span)  # span-hook
+            _set_span_value(active_tool_span, "output", out)  # span-hook
+            if out.get("ok") is False or "error" in out:  # span-hook
+                _set_span_error(active_tool_span, out.get("stderr") or out.get("error"))  # span-hook
+            _end_span(tool_handle)  # span-hook
             print("Tool result:", out)
             code = out.get("code", "")  # eval-hook
             if code:  # eval-hook
                 executed_code.append({"code": code, "ok": out.get("ok", False), "stderr": out.get("stderr", "")})  # eval-hook
             events.append({"kind": "tool", "name": tc.function.name, "latency": round(time.time() - t0, 2), "error": out.get("ok") is False or "error" in out})  # trace-hook
             messages.append({"role": "tool", "tool_call_id": tc.id, "content": json.dumps(out)[:4000]})
+        _set_span_value(tool_chain_span, "output", {"tool_calls": len(msg.tool_calls)})  # span-hook
+        _end_span(tool_chain_handle)  # span-hook
         if tool_calls_used >= MAX_TOOL_CALLS:
             messages.append({"role": "user", "content": "Tool budget exhausted - give your best final answer now."})
-    _end_span(root_span)  # span-hook
+    _set_span_value(agent_span, "output", {"answer": answer})  # span-hook
+    _end_span(root_handle)  # span-hook
     result = {"answer": answer}
     result.update({  # eval-hook
         "query": query, "label": label, "messages": messages,  # eval-hook

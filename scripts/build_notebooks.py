@@ -27,6 +27,8 @@ REPO = "RimmaShaf/fmlds-eval-workshop"
 RAW = f"https://raw.githubusercontent.com/{REPO}/main"
 COLAB = f"https://colab.research.google.com/github/{REPO}/blob/main"
 PHOENIX_BOARD_URL = "https://fmlds-eval-workshop-phoenix.fly.dev"
+PHOENIX_PROJECT = "00-Part-2-tracing-set-up"
+PHOENIX_EVAL_PROJECT = "01-Part-3-evaluations"
 PHOENIX_OTEL_VERSION = "0.17.1"
 PHOENIX_CLIENT_VERSION = "3.7.0"
 OPENINFERENCE_VERSION = "0.1.76"
@@ -257,12 +259,14 @@ F_SPAN_HOOKS = r'''# -----------------------------------------------------------
 from contextlib import nullcontext
 
 SPAN_TRACER = None
+SPAN_ATTRIBUTES = {}
 
 
-def set_span_tracer(tracer):
-    """Attach the OpenTelemetry tracer used by the agent's manual spans."""
-    global SPAN_TRACER
+def set_span_tracer(tracer, attributes=None):
+    """Attach a tracer and shared attributes for the agent's manual spans."""
+    global SPAN_TRACER, SPAN_ATTRIBUTES
     SPAN_TRACER = tracer
+    SPAN_ATTRIBUTES = attributes or {}
 
 
 def _span(name, kind):
@@ -271,10 +275,9 @@ def _span(name, kind):
         return nullcontext(None)
     from openinference.semconv.trace import SpanAttributes
 
-    return SPAN_TRACER.start_as_current_span(
-        name,
-        attributes={SpanAttributes.OPENINFERENCE_SPAN_KIND: kind},
-    )
+    attributes = {SpanAttributes.OPENINFERENCE_SPAN_KIND: kind}
+    attributes.update(SPAN_ATTRIBUTES)
+    return SPAN_TRACER.start_as_current_span(name, attributes=attributes)
 
 
 def _start_span(name, kind):
@@ -910,7 +913,7 @@ def connect(api_key=None, base_url=None, model=None):
 
 def seat_tag():
     """Stable per-participant tag derived from the seat key (no extra user input).
-    Used for Phoenix project names so every seat's traces stay distinguishable."""
+    Used as session metadata to distinguish participants in shared Phoenix projects."""
     global _SEAT_TAG
     if _SEAT_TAG:
         return _SEAT_TAG
@@ -1259,31 +1262,32 @@ utils.load_data()
 utils.connect()
 SEAT = utils.seat_tag()
 PHOENIX_BOARD_URL = "{PHOENIX_BOARD_URL}"
+PHOENIX_PROJECT = "{PHOENIX_PROJECT}"
 PHOENIX_API_KEY = utils.get_secret("PHOENIX_API_KEY")
 if not PHOENIX_API_KEY:
     from getpass import getpass
     PHOENIX_API_KEY = getpass("Phoenix board API key: ").strip()
 from utils import NAIVE_SYSTEM_PROMPT, run_agent
 
-print("bootstrap done | seat tag:", SEAT, "| traces will go to the shared Phoenix board")
+print("bootstrap done | seat tag:", SEAT, "| shared Phoenix project:", PHOENIX_PROJECT)
 """, ("core",)))
 
 nb2_cells.append(md("""## 2. Send traces to the shared Phoenix board
 
-Register the shared OTLP collector and authenticate with the board key. The project name
-includes your seat tag, so your agent and tool traces are grouped with your seat on Fly.
+Register the shared OTLP collector and authenticate with the board key. The whole room
+uses the `00-Part-2-tracing-set-up` project, which sorts before the gateway project.
 """))
 
 nb2_cells.append(code(r"""from phoenix.otel import register
 
 tracer_provider = register(
-    project_name=f"seat-{SEAT}",
+    project_name=PHOENIX_PROJECT,
     endpoint=f"{PHOENIX_BOARD_URL}/v1/traces",
     protocol="http/protobuf",
     batch=False,
     api_key=PHOENIX_API_KEY,
 )
-print("Shared Phoenix project:", f"seat-{SEAT}")
+print("Shared Phoenix project:", PHOENIX_PROJECT)
 print("Phoenix board:", PHOENIX_BOARD_URL)
 """, ("core",)))
 
@@ -1296,9 +1300,13 @@ Inputs, outputs, and tool errors are recorded as span attributes.
 """))
 
 nb2_cells.append(code(r"""from openinference.instrumentation.openai import OpenAIInstrumentor
+from openinference.semconv.trace import SpanAttributes
 
 OpenAIInstrumentor().instrument(tracer_provider=tracer_provider)
-utils.set_span_tracer(tracer_provider.get_tracer(__name__))
+utils.set_span_tracer(
+    tracer_provider.get_tracer(__name__),
+    attributes={SpanAttributes.SESSION_ID: SEAT},
+)
 print("OpenAI calls instrumented; manual agent/chain/tool spans enabled")
 """, ("core",)))
 
@@ -1325,7 +1333,7 @@ print(missing_location["answer"])
 
 nb2_cells.append(md("""### Read the trace in Phoenix
 
-Open the shared Phoenix board and select the `seat-<tag>` project printed in setup. Expand the trace and follow the
+Open the shared Phoenix board and select project `00-Part-2-tracing-set-up`. Expand the trace and follow the
 parent-child spans. Find the router's LLM call, the selected tool, and the tool's input
 and output. A failed tool call should be visible in its TOOL span rather than disappearing
 inside a final answer.
@@ -1334,10 +1342,10 @@ inside a final answer.
 nb2_cells.append(code(r"""from phoenix.client import Client
 
 phoenix_client = Client(base_url=PHOENIX_BOARD_URL, api_key=PHOENIX_API_KEY)
-spans_df = phoenix_client.spans.get_spans_dataframe(project_identifier=f"seat-{SEAT}")
+spans_df = phoenix_client.spans.get_spans_dataframe(project_identifier=PHOENIX_PROJECT)
 trace_columns = [
     column for column in (
-        "name", "span_kind", "parent_id", "status_code",
+        "name", "span_kind", "parent_id", "status_code", "attributes.session.id",
         "attributes.input.value", "attributes.output.value",
         "attributes.llm.token_count.prompt", "attributes.llm.token_count.completion",
     )
@@ -1363,16 +1371,16 @@ nb2_cells.append(code(r"""net_expenses = run_agent(
 print(net_expenses["answer"])
 """, ("demo",)))
 
-nb2_cells.append(code(r"""spans_df = phoenix_client.spans.get_spans_dataframe(project_identifier=f"seat-{SEAT}")
+nb2_cells.append(code(r"""spans_df = phoenix_client.spans.get_spans_dataframe(project_identifier=PHOENIX_PROJECT)
 display(spans_df[trace_columns].tail(20))
 """, ("demo",)))
 
 nb2_cells.append(md("""---
 ## All traces go to the shared board
 
-There is no separate publish step: the missing-information run, the refund analysis, and
-any additional agent runs in this runtime are sent directly to your `seat-<tag>` project on
-the [shared Phoenix board](https://fmlds-eval-workshop-phoenix.fly.dev).
+There is no separate publish step: notebook 2's agent, OpenAI, chain, and tool traces
+arrive in the shared `00-Part-2-tracing-set-up` project. Agent spans carry your `session.id`
+so the room can distinguish participant runs from one another and from gateway traces.
 """))
 
 nb2_cells.append(md(f"""---
@@ -1408,10 +1416,22 @@ The checks fail closed: missing output or a crashed tool means FAIL.
 """))
 
 nb3_cells.append(md("""---
+## 1. Install the Phoenix tracing SDKs
+
+Notebook 3 sends evaluation-run traces to its own shared Phoenix project,
+`01-Part-3-evaluations`.
+"""))
+
+nb3_cells.append(code(f"%pip install -q arize-phoenix-otel=={PHOENIX_OTEL_VERSION} arize-phoenix-client=={PHOENIX_CLIENT_VERSION} openinference-instrumentation-openai=={OPENINFERENCE_VERSION}", ("core",)))
+
+nb3_cells.append(md("""> Install before importing the agent or tracing SDK. If Colab says the runtime
+> needs a restart, restart it and rerun the notebook from the top.
+"""))
+
+nb3_cells.append(md("""---
 ## Bootstrap
 
-Same as notebook 2, plus the golden suite - loaded here because this is where
-evaluation starts.
+Load the agent and golden suite, connect to the workshop gateway, and read the board key.
 """))
 
 nb3_cells.append(code(f'''import urllib.request
@@ -1425,12 +1445,46 @@ import utils
 utils.load_data()
 utils.load_golden()
 utils.connect()
+SEAT = utils.seat_tag()
+PHOENIX_BOARD_URL = "{PHOENIX_BOARD_URL}"
+PHOENIX_EVAL_PROJECT = "{PHOENIX_EVAL_PROJECT}"
+PHOENIX_API_KEY = utils.get_secret("PHOENIX_API_KEY")
+if not PHOENIX_API_KEY:
+    from getpass import getpass
+    PHOENIX_API_KEY = getpass("Phoenix board API key: ").strip()
 
 from utils import (CREATIVE_SYSTEM_PROMPT, HARDENED_SYSTEM_PROMPT, JUDGE_MODEL, GOLDEN,
                    MAX_TOKENS, client, df, run_agent, waterfall)
 
 print("bootstrap done |", len(GOLDEN["cases"]), "golden cases loaded")
 ''', ("core",)))
+
+nb3_cells.append(md("""## 2. Send evaluation traces to their shared project
+
+Evaluation runs use a separate project from Notebook 2, while all workshop participants
+share the same project here.
+"""))
+
+nb3_cells.append(code(r"""from phoenix.otel import register
+from openinference.instrumentation.openai import OpenAIInstrumentor
+from openinference.semconv.trace import SpanAttributes
+
+tracer_provider = register(
+    project_name=PHOENIX_EVAL_PROJECT,
+    endpoint=f"{PHOENIX_BOARD_URL}/v1/traces",
+    protocol="http/protobuf",
+    batch=False,
+    api_key=PHOENIX_API_KEY,
+)
+OpenAIInstrumentor().instrument(tracer_provider=tracer_provider)
+utils.set_span_tracer(
+    tracer_provider.get_tracer(__name__),
+    attributes={SpanAttributes.SESSION_ID: SEAT},
+)
+from phoenix.client import Client
+phoenix_client = Client(base_url=PHOENIX_BOARD_URL, api_key=PHOENIX_API_KEY)
+print("Phoenix project:", PHOENIX_EVAL_PROJECT)
+""", ("core",)))
 
 nb3_cells.append(md("""---
 ## The harness
@@ -1579,36 +1633,38 @@ print(f"baseline: {int(baseline_scorecard['PASS'].sum())}/{len(GOLDEN['cases'])}
 ''', ("demo",)))
 
 nb3_cells.append(md("""---
-## Optional - paint your eval results onto the traces
+## Attach eval results to the Part 3 traces
 
-If you ran notebook 2's Phoenix setup **in this same runtime**, the suite you just
-executed was traced: every case is a CHAIN span named `baseline/<case>`. This cell
-attaches the pass/fail verdict to those spans - the pattern for annotating production
-traces with eval scores:
+The baseline runs were sent to the shared `01-Part-3-evaluations` project. This cell adds
+their pass/fail verdicts to the matching agent spans for review in Phoenix.
 """))
 
-nb3_cells.append(code(r'''if utils.SPAN_TRACER is None:
-    print("No tracer attached (run notebook 2's Phoenix cells in this runtime first) - skipping.")
+nb3_cells.append(code(r'''import pandas as _pd
+
+spans = phoenix_client.spans.get_spans(project_identifier=PHOENIX_EVAL_PROJECT, limit=2000)
+by_name = {}
+for span in spans:
+    attributes = span.get("attributes") or {}
+    if attributes.get("session.id") != SEAT:
+        continue
+    span_name = span.get("name")
+    span_id = (span.get("context") or {}).get("span_id")
+    if span_name and span_id:
+        by_name[span_name] = span_id
+
+ann_rows = []
+for row in baseline_scorecard.to_dict(orient="records"):
+    span_id = by_name.get(f"baseline/{row['case']}")
+    if span_id:
+        ann_rows.append({"span_id": span_id, "label": "PASS" if row["PASS"] else "FAIL",
+                         "score": float(bool(row["PASS"])), "explanation": row.get("answer_preview", "")[:100]})
+if ann_rows:
+    phoenix_client.spans.log_span_annotations_dataframe(
+        dataframe=_pd.DataFrame(ann_rows), annotation_name="Golden Suite", annotator_kind="CODE",
+    )
+    print(f"annotated {len(ann_rows)} spans in {PHOENIX_EVAL_PROJECT}")
 else:
-    import pandas as _pd
-    from phoenix.client import Client
-
-    spans = Client().spans.get_spans(project_identifier=f"workshop-{utils.seat_tag()}", limit=2000)
-    by_name = {s["name"]: (s.get("context") or {}).get("span_id") for s in spans if s.get("name")}
-
-    ann_rows = []
-    for row in baseline_scorecard.to_dict(orient="records"):
-        span_id = by_name.get(f"baseline/{row['case']}")
-        if span_id:
-            ann_rows.append({"span_id": span_id, "label": "PASS" if row["PASS"] else "FAIL",
-                             "score": float(bool(row["PASS"])), "explanation": row.get("answer_preview", "")[:100]})
-    if ann_rows:
-        Client().spans.log_span_annotations_dataframe(
-            dataframe=_pd.DataFrame(ann_rows), annotation_name="Golden Suite", annotator_kind="CODE",
-        )
-        print(f"annotated {len(ann_rows)} spans - open the Phoenix UI and click a trace to see the verdict")
-    else:
-        print("no matching spans found yet - re-run the baseline suite and try again")
+    print("no matching Part 3 spans found yet - re-run the baseline suite and try again")
 ''', ("demo",)))
 
 nb3_cells.append(md("""---

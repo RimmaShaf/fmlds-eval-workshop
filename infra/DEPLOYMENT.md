@@ -319,9 +319,9 @@ collecting traces from two directions:
    every request — full trace tree (HTTP → auth → LLM call → DB writes), tagged
    with `litellm.metadata.user_api_key_alias` = the seat alias. Zero participant
    setup; this is what the projector shows.
-2. **Client-side (automatic):** notebook 2 exports the participant's instrumented
-   AGENT/LLM/CHAIN/TOOL spans directly to project `seat-<tag>` (tag derived from
-   their seat key, no user input).
+2. **Client-side (automatic):** notebook 2 exports participant AGENT/LLM/CHAIN/TOOL
+   spans to `00-Part-2-tracing-set-up`; notebook 3 exports evaluation traces and
+   grades to `01-Part-3-evaluations`. Gateway spans remain in project `gateway`.
 
 ### Deploy (agent can do all of this)
 
@@ -389,10 +389,11 @@ the desk cards as the `PHOENIX_API_KEY` Colab secret.
 1. Fire one pilot-key request through the gateway; within ~10 s the board's
    `gateway` project shows a trace whose spans carry
    `litellm.metadata.user_api_key_alias: "seat-01"`.
-2. Run notebook 2 with the desk-card `PHOENIX_API_KEY`; project `seat-<tag>`
-   should receive each run's full AGENT/LLM/CHAIN/TOOL trace automatically.
-3. Log into the board UI — see the human task below — and confirm the
-   projector view filters by seat alias.
+2. Run notebook 2 with the desk-card `PHOENIX_API_KEY`; traces should appear in
+   `00-Part-2-tracing-set-up`.
+3. Run notebook 3's baseline suite; traces and grades should appear in
+   `01-Part-3-evaluations`. Confirm the LiteLLM gateway traces remain in `gateway`.
+4. Log into the board UI and confirm the projector can select each of the three projects.
 
 ### Human tasks for this phase
 
@@ -400,11 +401,11 @@ the desk cards as the `PHOENIX_API_KEY` Colab secret.
   and Phoenix prompts you to change it. Choose a real password, store it in
   your password manager — this is the instructor's board UI credential.
 - **Desk cards:** each card carries (a) the key-sheet short URL and (b) the
-  `PHOENIX_API_KEY` required by notebook 2 (the participant key from
-  `infra/phoenix_board.key`). The notebook contains the public board URL.
+  `PHOENIX_API_KEY` required by notebooks 2–3 (the participant key from
+  `infra/phoenix_board.key`). Both notebooks contain the public board URL.
 
-Notebook 2 exports spans directly, so there is no separate publish step or ID
-remapping. The OpenTelemetry SDK generates distinct trace/span IDs for each run.
+Notebooks 2 and 3 export spans directly, so there is no separate publish step or
+ID remapping. The OpenTelemetry SDK generates distinct trace/span IDs for each run.
 
 ---
 
@@ -431,7 +432,9 @@ secret and do the live pass.
       client, and OpenInference packages before imports → bootstrap fetches
       `utils.py` and the board API key → register the board's OTLP endpoint →
       missing-location and refund-netting runs appear immediately in project
-      `seat-<tag>` with nested AGENT/CHAIN/LLM/TOOL spans and I/O
+      `00-Part-2-tracing-set-up` with nested AGENT/CHAIN/LLM/TOOL spans and I/O
+- [ ] **Notebook 3:** run the baseline suite → traces and grade annotations appear
+      in `01-Part-3-evaluations`, separate from Part 2 and the gateway project.
 - [ ] **Notebook 3 (15 min, live):** bootstrap → baseline suite (expect the 15
       RPM seat cap to pace it to ~5 min — that's the realistic participant
       experience; for a faster rehearsal use a `--rpm 60` pilot key) →
@@ -499,7 +502,7 @@ In this order:
 | `POST /v1/system/api_keys` → 422 "Field required: data" | request body must wrap in a `data` object | `{"data": {"name": "..."}}` |
 | System-key response has no `api_key` field | the response field is `key`, and the value is shown **once** | parse `data.key`; if you lose it, mint a new key (old one can't be retrieved) |
 | `phoenix.client.Client(endpoint=...)` → TypeError | that was the old client; the new one takes `base_url` | `Client(base_url=..., api_key=...)` |
-| Board project has no spans yet | API key/project name is wrong, or the first run has not completed | confirm `PHOENIX_API_KEY`, `seat-<tag>`, and the endpoint `https://fmlds-eval-workshop-phoenix.fly.dev/v1/traces` |
+| Board project has no spans yet | API key/project name is wrong, or the first run has not completed | confirm `PHOENIX_API_KEY`, `00-Part-2-tracing-set-up` or `01-Part-3-evaluations`, and the endpoint `https://fmlds-eval-workshop-phoenix.fly.dev/v1/traces` |
 | Can't find 2FA on Fly | it's per-user | avatar → Account → 2FA |
 
 ## Security invariants (the short version)

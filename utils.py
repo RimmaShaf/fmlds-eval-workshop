@@ -64,7 +64,7 @@ def connect(api_key=None, base_url=None, model=None):
 
 def seat_tag():
     """Stable per-participant tag derived from the seat key (no extra user input).
-    Used for Phoenix project names so every seat's traces stay distinguishable."""
+    Used as session metadata to distinguish participants in shared Phoenix projects."""
     global _SEAT_TAG
     if _SEAT_TAG:
         return _SEAT_TAG
@@ -276,12 +276,14 @@ CREATIVE_SYSTEM_PROMPT = """You are a warm, creative financial storyteller. Chat
 from contextlib import nullcontext
 
 SPAN_TRACER = None
+SPAN_ATTRIBUTES = {}
 
 
-def set_span_tracer(tracer):
-    """Attach the OpenTelemetry tracer used by the agent's manual spans."""
-    global SPAN_TRACER
+def set_span_tracer(tracer, attributes=None):
+    """Attach a tracer and shared attributes for the agent's manual spans."""
+    global SPAN_TRACER, SPAN_ATTRIBUTES
     SPAN_TRACER = tracer
+    SPAN_ATTRIBUTES = attributes or {}
 
 
 def _span(name, kind):
@@ -290,10 +292,9 @@ def _span(name, kind):
         return nullcontext(None)
     from openinference.semconv.trace import SpanAttributes
 
-    return SPAN_TRACER.start_as_current_span(
-        name,
-        attributes={SpanAttributes.OPENINFERENCE_SPAN_KIND: kind},
-    )
+    attributes = {SpanAttributes.OPENINFERENCE_SPAN_KIND: kind}
+    attributes.update(SPAN_ATTRIBUTES)
+    return SPAN_TRACER.start_as_current_span(name, attributes=attributes)
 
 
 def _start_span(name, kind):

@@ -19,8 +19,8 @@
 ## The story in 60 seconds
 
 1. **Notebook 1 — Build your Agent** — a hand-rolled tool-calling agent (schema lookup, pandas analysis, financial rules, and charting) with a naive one-line system prompt. It demonstrates sign/refund mistakes, merchant aliases, and requests that the available data may not support.
-2. **Notebook 2 — Tracing with Phoenix** — uses OpenTelemetry and OpenInference instrumentation to capture LLM, agent, chain, and tool spans. Every run sends its full trace directly to the shared Phoenix board under your seat project; inspect tool inputs/outputs and compare a missing-information request with a successful analysis.
-3. **Notebook 3 — Evaluations** — an 11-case golden suite with frozen programmatic ground truth: execution checks (AST, no traceback), **router checks** (did the model call the right tool), numeric ground-truth matches, and an LLM-as-judge rubric. Baseline hardened agent: **10/11**. Inject a "creative & conversational" prompt + `temperature=0.7`: **6/11**, caught automatically — and the same suite runs as the CI gate.
+2. **Notebook 2 — Tracing with Phoenix** — uses OpenTelemetry and OpenInference instrumentation to capture LLM, agent, chain, and tool spans. Every participant sends traces to the shared `00-Part-2-tracing-set-up` project; inspect tool inputs/outputs and compare a missing-information request with a successful analysis.
+3. **Notebook 3 — Evaluations** — runs the 11-case suite and records traces/grades in the separate shared `01-Part-3-evaluations` project, with frozen ground truth, execution/router checks, numeric matches, and an LLM-as-a-judge rubric. Baseline: **10/11**; regression: **6/11**, caught by the CI gate.
 
 ## Repo map
 
@@ -45,7 +45,7 @@ infra/DEPLOYMENT.md             field-tested gateway + board deployment runbook
 
 ## Participant quickstart
 
-**Google Colab (primary):** open the notebooks in order — **1 Build your Agent → 2 Tracing with Phoenix → 3 Evaluations** (badges above, one per notebook). Enter your workshop key when the health-check cell asks, or save it as the `LITELLM_API_KEY` Colab secret. Notebook 2 also needs the `PHOENIX_API_KEY` from your desk card to send traces to the shared board; it prompts if the secret is not set. No Kaggle auth, no uploads: the data loads from this repo's raw URL, and notebooks 2–3 fetch the repo's `utils.py` automatically, so you don't need to re-run notebook 1. No Google account? Use the Codespaces or Binder badge above (GitHub account / no account at all respectively), or clone and run locally.
+**Google Colab (primary):** open the notebooks in order — **1 Build your Agent → 2 Tracing with Phoenix → 3 Evaluations** (badges above, one per notebook). Enter your workshop key when the health-check cell asks, or save it as the `LITELLM_API_KEY` Colab secret. Notebooks 2–3 also need the `PHOENIX_API_KEY` from your desk card to send traces to their shared projects; they prompt if the secret is not set. No Kaggle auth, no uploads: the data loads from this repo's raw URL, and notebooks 2–3 fetch the repo's `utils.py` automatically, so you don't need to re-run notebook 1. No Google account? Use the Codespaces or Binder badge above (GitHub account / no account at all respectively), or clone and run locally.
 
 **Local / Codespaces:** open the repo, `pip install -r requirements.txt`, then run the notebooks in order and enter your workshop key when prompted. The notebooks load the transaction data from the repository's hosted CSV.
 
@@ -74,7 +74,7 @@ Paste `infra/seat_keys.csv` rows into the **view-only** Google Sheet; print desk
 
 **3. CI gate:** already wired (`.github/workflows/evals.yml`): dataset integrity check, deterministic mock golden-suite gate, and a self-test proving the gate catches a known-bad regression. For scheduled live-model evals through the workshop gateway, add a `LITELLM_API_KEY` GitHub secret.
 
-**4. Room-wide observability (Phoenix board):** the gateway ships every request's trace to a central self-hosted Phoenix app (Tokyo, `infra/DEPLOYMENT.md` has the full deploy runbook) via the LiteLLM `arize_phoenix` callback. Notebook 2 sends its agent, LLM, chain, and tool spans directly to the same board, grouped in a `seat-<tag>` project; no local Phoenix server or publish step is needed.
+**4. Room-wide observability (Phoenix board):** the LiteLLM gateway keeps server-side request traces in `gateway`. Notebook 2 writes participant agent/LLM/chain/tool spans to `00-Part-2-tracing-set-up`; Notebook 3 writes evaluation traces and grades to `01-Part-3-evaluations`. All projects are on the same Fly-hosted board, and session IDs make participant runs filterable.
 
 **5. Emergency kit:** 5 mobile hotspots + 5 reserve master-pool keys (create with `make_seat_keys.py --seats 5 --budget 5`).
 

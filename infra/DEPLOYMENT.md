@@ -372,8 +372,9 @@ Gotchas packed in there: the request body must be `{"data": {...}}` (422
 otherwise); the response field is `key` (not `api_key`); the key is shown
 **once**; `PHOENIX_SECRET` (JWT signing) must already be set or the admin
 secret is rejected. Mint a second key the same way for participants and save
-it to `infra/phoenix_board.key` (gitignored via `*.key`) — that value goes on
-the desk cards as the `PHOENIX_API_KEY` Colab secret.
+it to `infra/phoenix_board.key` (gitignored via `*.key`). For rehearsal, copy
+that value into the Colab `PHOENIX_API_KEY` secret; for the live workshop, put
+it on the desk cards.
 
 ### Wire the gateway (already committed)
 
@@ -414,10 +415,10 @@ ID remapping. The OpenTelemetry SDK generates distinct trace/span IDs for each r
 The only thing that cannot be verified from the repo itself is the real Colab
 experience. Run all three notebooks end-to-end as a participant would.
 
-**Prep (2 min):** a pilot seat key and `PHOENIX_API_KEY` from
-`infra/phoenix_board.key`. The notebooks prompt for missing keys. For fewer
-prompts, set `LITELLM_API_KEY` and `PHOENIX_API_KEY` as Colab secrets (🔑 panel,
-switch **Notebook access** on in each notebook); `utils.get_secret` reads them.
+**Prep (2 min):** a pilot seat key and the participant board key in
+`infra/phoenix_board.key`. For rehearsal, set that value as the Colab secret
+`PHOENIX_API_KEY` (🔑 panel; enable **Notebook access** for Notebooks 2–3), or
+paste it at the hidden prompt. It is separate from `LITELLM_API_KEY`.
 
 **Fast structural pass first (optional, 5 min):** set a `WORKSHOP_MODE=mock`
 secret, run all three notebooks top to bottom. Validates badges, bootstrap,

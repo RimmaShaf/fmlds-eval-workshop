@@ -1248,8 +1248,8 @@ nb2_cells.append(md("""---
 
 Refresh stale `utils.py` copies, load the synthetic ledger, and connect through the same
 workshop gateway and seat key as notebook 1. The shared Phoenix board requires a separate
-participant `PHOENIX_API_KEY` from your desk card; it is not your LiteLLM workshop key.
-Save it as a Colab secret named `PHOENIX_API_KEY` or enter it at the hidden prompt.
+participant `PHOENIX_API_KEY` supplied by the organizer; it is not your LiteLLM workshop
+key. Save it as a Colab secret named `PHOENIX_API_KEY` or enter it at the hidden prompt.
 """))
 
 nb2_cells.append(code(f"""import urllib.request
@@ -1281,7 +1281,7 @@ except Exception as exc:
     if "401" not in str(exc) and "Unauthorized" not in str(exc):
         raise
     from getpass import getpass
-    print("Saved Phoenix key was rejected. Enter the participant board key from your desk card.")
+    print("Saved Phoenix key was rejected. Enter the participant board key supplied by the organizer.")
     PHOENIX_API_KEY = getpass("Phoenix board API key: ").strip()
     phoenix_client = Client(base_url=PHOENIX_BOARD_URL, api_key=PHOENIX_API_KEY)
     phoenix_client.projects.list()
@@ -1450,7 +1450,7 @@ nb3_cells.append(md("""---
 ## Bootstrap
 
 Load the agent and golden suite, connect to the workshop gateway, and verify the separate
-participant `PHOENIX_API_KEY` from the desk card. It is not the LiteLLM workshop key.
+participant `PHOENIX_API_KEY` supplied by the organizer. It is not the LiteLLM workshop key.
 """))
 
 nb3_cells.append(code(f'''import urllib.request
@@ -1483,7 +1483,7 @@ except Exception as exc:
     if "401" not in str(exc) and "Unauthorized" not in str(exc):
         raise
     from getpass import getpass
-    print("Saved Phoenix key was rejected. Enter the participant board key from your desk card.")
+    print("Saved Phoenix key was rejected. Enter the participant board key supplied by the organizer.")
     PHOENIX_API_KEY = getpass("Phoenix board API key: ").strip()
     phoenix_client = Client(base_url=PHOENIX_BOARD_URL, api_key=PHOENIX_API_KEY)
     phoenix_client.projects.list()

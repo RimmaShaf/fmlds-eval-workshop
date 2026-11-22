@@ -1336,11 +1336,104 @@ nb2_cells.append(md("""> **Trace data note:** spans contain prompts and tool inp
 """))
 
 nb2_cells.append(md("""---
-## 4. Trace a request the ledger may not support
+## 4. Challenge 1: signed expenses versus cash flow
 
-This request asks for a merchant-location breakdown, but the ledger has no location field.
-Run the agent, then use the trace to see which steps it took and what the tool returned.
-The exact model response can vary.
+Ask the agent for October expenses without explaining that income and refunds are positive
+while expenses are negative. In the trace, inspect the generated pandas code and tool output.
+"""))
+
+nb2_cells.append(code(r"""gross_october = run_agent(
+    "Use analyze_transactions to calculate my total expenses in October and report the dollar amount.",
+    system_prompt=NAIVE_SYSTEM_PROMPT,
+    temperature=0.0,
+    label="nb2/october-gross-expenses",
+)
+print(gross_october["answer"])
+""", ("demo",)))
+
+nb2_cells.append(md("""Compare the answer with two plausible calculations: the positive magnitude of
+negative transactions, and the signed total of every October transaction.
+"""))
+
+nb2_cells.append(code(r"""october = df[df["date"].dt.month == 10]
+truth_gross_expenses = -october.loc[october["amount"] < 0, "amount"].sum()
+signed_cash_flow = october["amount"].sum()
+print(f"expense magnitude: {truth_gross_expenses:,.2f}")
+print(f"signed cash flow:  {signed_cash_flow:,.2f}")
+print(f"positive income/refunds included: {october.loc[october['amount'] > 0, 'amount'].sum():,.2f}")
+""", ("demo",)))
+
+nb2_cells.append(md("""### Inspect this run's tool I/O
+
+The Phoenix trace shows the overall span tree. This helper also prints the exact tool
+arguments and results returned to the agent for this individual run.
+"""))
+
+nb2_cells.append(code(r"""def show_tool_io(result):
+    "Print tool arguments and returned results from one agent run."
+    for message in result["messages"]:
+        if message.get("role") == "assistant":
+            for call in message.get("tool_calls") or []:
+                function = call["function"]
+                print(f"Calling {function['name']}: {function['arguments']}")
+        elif message.get("role") == "tool":
+            print("Tool result:", message["content"])
+""", ("core",)))
+nb2_cells.append(code("show_tool_io(gross_october)", ("demo",)))
+
+nb2_cells.append(md("""### Harder sign case: net expenses after refunds
+
+Gross expenses count negative transactions. Net expenses subtract refunds but must exclude
+income. The synthetic ledger contains an October refund.
+"""))
+
+nb2_cells.append(code(r"""net_october = run_agent(
+    "Use analyze_transactions to calculate net expenses in October after transaction refunds, excluding income.",
+    system_prompt=NAIVE_SYSTEM_PROMPT,
+    temperature=0.0,
+    label="nb2/net-expenses-after-refunds",
+)
+print(net_october["answer"])
+""", ("demo",)))
+
+nb2_cells.append(code(r"""refunds = october.loc[
+    october["raw_description"].str.contains("REFUND", case=False) & (october["amount"] > 0), "amount"
+].sum()
+print(f"gross expenses: {truth_gross_expenses:,.2f}")
+print(f"refunds:        {refunds:,.2f}")
+print(f"net expenses:   {truth_gross_expenses - refunds:,.2f}")
+""", ("demo",)))
+nb2_cells.append(code("show_tool_io(net_october)", ("demo",)))
+
+nb2_cells.append(md("""---
+## 5. Challenge 2: merchant aliases and a decoy
+
+Descriptions use both `STARBUCKS` and the alias `SBUX`. Tully's is another coffee shop,
+not Starbucks. Inspect the tool input and see whether the generated filter handles both cases.
+"""))
+
+nb2_cells.append(code(r"""starbucks_run = run_agent(
+    "Use analyze_transactions to find my total Starbucks spending and report the dollar amount, even if it is zero.",
+    system_prompt=NAIVE_SYSTEM_PROMPT,
+    temperature=0.0,
+    label="nb2/starbucks-aliases",
+)
+print(starbucks_run["answer"])
+""", ("demo",)))
+
+nb2_cells.append(code(r"""is_starbucks = df["raw_description"].str.contains(r"STARBUCKS|SBUX", case=False, regex=True)
+truth_starbucks = -df.loc[is_starbucks & (df["amount"] < 0), "amount"].sum()
+tully_decoy_count = df["raw_description"].str.contains("TULLY'S", case=False).sum()
+print(f"Starbucks + SBUX expense magnitude: {truth_starbucks:,.2f}")
+print(f"Tully's decoy rows to exclude:      {tully_decoy_count}")
+""", ("demo",)))
+nb2_cells.append(code("show_tool_io(starbucks_run)", ("demo",)))
+
+nb2_cells.append(md("""---
+## 6. Challenge 3: what happens when the data has no requested field?
+
+The ledger has no merchant-location column. Ask for a location breakdown, then inspect the
+schema and tool response rather than assuming what the model will say.
 """))
 
 nb2_cells.append(code(r"""missing_location = run_agent(
@@ -1352,45 +1445,34 @@ nb2_cells.append(code(r"""missing_location = run_agent(
 print(missing_location["answer"])
 """, ("demo",)))
 
-nb2_cells.append(md("""### Read the trace in Phoenix
+nb2_cells.append(code(r"""print("merchant_city exists:", "merchant_city" in df.columns)
+print("available columns:", sorted(df.columns.tolist()))
+""", ("demo",)))
+nb2_cells.append(code("show_tool_io(missing_location)", ("demo",)))
 
-Open the shared Phoenix board and select project `00-Part-2-tracing-set-up`. Expand the trace and follow the
-parent-child spans. Find the router's LLM call, the selected tool, and the tool's input
-and output. A failed tool call should be visible in its TOOL span rather than disappearing
-inside a final answer.
+nb2_cells.append(md("""### Find your runs in the shared Part 2 project
+
+All participants share one Phoenix project, so use the `session.id` attribute to identify
+your spans. Expand an AGENT span to inspect its nested router, LLM, tool, and tool-generated
+LLM spans; compare that tree with the printed tool I/O above.
 """))
 
-nb2_cells.append(code(r"""spans_df = phoenix_client.spans.get_spans_dataframe(project_identifier=PHOENIX_PROJECT)
+nb2_cells.append(code(r"""spans_df = phoenix_client.spans.get_spans_dataframe(project_identifier=PHOENIX_PROJECT, limit=1000)
 trace_columns = [
     column for column in (
-        "name", "span_kind", "parent_id", "status_code", "attributes.session.id",
-        "attributes.input.value", "attributes.output.value",
+        "name", "span_kind", "parent_id", "context.trace_id",
+        "attributes.session.id", "attributes.input.value", "attributes.output.value",
         "attributes.llm.token_count.prompt", "attributes.llm.token_count.completion",
     )
     if column in spans_df.columns
 ]
-display(spans_df[trace_columns].tail(12))
-""", ("demo",)))
-
-nb2_cells.append(md("""---
-## 5. Compare with a successful analysis
-
-Run a second request that asks for net expenses after refunds. In Phoenix, compare its
-agent → router/LLM → tool span tree with the missing-information example. Notice how the
-same instrumentation captures both paths without changing the tracing code.
-"""))
-
-nb2_cells.append(code(r"""net_expenses = run_agent(
-    "Use analyze_transactions to calculate net expenses in October after transaction refunds, excluding income.",
-    system_prompt=NAIVE_SYSTEM_PROMPT,
-    temperature=0.0,
-    label="nb2/net-expenses-after-refunds",
-)
-print(net_expenses["answer"])
-""", ("demo",)))
-
-nb2_cells.append(code(r"""spans_df = phoenix_client.spans.get_spans_dataframe(project_identifier=PHOENIX_PROJECT)
-display(spans_df[trace_columns].tail(20))
+trace_id_column = next((column for column in ("context.trace_id", "trace_id") if column in spans_df.columns), None)
+if trace_id_column and "attributes.session.id" in spans_df.columns:
+    my_trace_ids = spans_df.loc[spans_df["attributes.session.id"] == SEAT, trace_id_column].dropna().unique()
+    my_spans = spans_df[spans_df[trace_id_column].isin(my_trace_ids)]
+else:
+    my_spans = spans_df.tail(40)
+display(my_spans[trace_columns])
 """, ("demo",)))
 
 nb2_cells.append(md("""---

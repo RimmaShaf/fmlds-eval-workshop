@@ -1147,7 +1147,7 @@ print(f"income and refunds included in that total:  {df.loc[(df['date'].dt.month
 print("\nThe signed total is net cash flow, not expense magnitude.")
 ''', ("demo",)))
 
-nb1_cells.append(md("""### Harder sign case: net expenses after refunds
+nb1_cells.append(md("""### Net expenses after refunds
 
 Gross expenses count negative transactions. Net expenses also subtract refunds, but must
 not subtract income. The ledger contains an October refund for this case.
@@ -1412,7 +1412,7 @@ nb2_cells.append(code(r"""def show_tool_io(result):
 """, ("core",)))
 nb2_cells.append(code("show_tool_io(gross_october)", ("demo",)))
 
-nb2_cells.append(md("""### Harder sign case: net expenses after refunds
+nb2_cells.append(md("""### Net expenses after refunds
 
 Gross expenses count negative transactions. Net expenses subtract refunds but must exclude
 income. The synthetic ledger contains an October refund.
@@ -1487,6 +1487,12 @@ nb2_cells.append(md(f"""---
    `your-session-id` with the `session.id` printed during setup:
 
    `attributes['session.id'] == 'your-session-id'`
+
+To find one specific free-text AGENT span in the **Spans** table, use its span name:
+
+`name == 'nb2/free-text/your-session-id'`
+
+`name` is a built-in span field; it is not an attribute, so do not use `attributes['name']`.
 
 4. Open a matching trace and expand its AGENT root to follow the nested router, LLM, tool,
    and tool-generated LLM spans. See [Phoenix filter expressions](https://arize.com/docs/phoenix/tracing/how-to-tracing/filter-expressions).

@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 REPO = "RimmaShaf/fmlds-eval-workshop"
 RAW = f"https://raw.githubusercontent.com/{REPO}/main"
 COLAB = f"https://colab.research.google.com/github/{REPO}/blob/main"
-PHOENIX_VERSION = "22.0.0"
+PHOENIX_VERSION = "12.15.1"
 OPENINFERENCE_VERSION = "0.1.76"
 
 NB1 = ROOT / "01_build_your_agent.ipynb"
@@ -1242,13 +1242,16 @@ print("bootstrap done | seat tag:", SEAT)
 """, ("core",)))
 
 nb2_cells.append(md("""---
-## 1. Install the tracing libraries
+## 1. Install Colab-compatible tracing libraries
 
 The observability stack uses Phoenix's OpenTelemetry registration and OpenInference's
-OpenAI instrumentor. The workshop agent uses its existing pandas-based tools.
+OpenAI instrumentor. Colab pins OpenTelemetry for Google ADK and SQLGlot for Ibis, so this
+cell keeps those dependencies within Colab's supported versions. The local Phoenix UI
+package is older than the separately deployed room board.
 """))
 
-nb2_cells.append(code(f"%pip install -q arize-phoenix=={PHOENIX_VERSION} openinference-instrumentation-openai=={OPENINFERENCE_VERSION}", ("core",)))
+nb2_cells.append(code(f'''%pip install -q arize-phoenix=={PHOENIX_VERSION} openinference-instrumentation-openai=={OPENINFERENCE_VERSION} google-auth==2.49.0 opentelemetry-api==1.42.1 opentelemetry-sdk==1.42.1 opentelemetry-exporter-otlp==1.42.1 opentelemetry-proto==1.42.1 opentelemetry-semantic-conventions==0.63b1 opentelemetry-instrumentation==0.63b1 "sqlglot>=23.4,<25.21"
+''', ("core",)))
 
 nb2_cells.append(md("""## 2. Start Phoenix and register an OpenTelemetry provider
 

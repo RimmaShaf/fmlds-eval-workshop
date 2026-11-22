@@ -332,12 +332,11 @@ fly deploy -c infra/phoenix.toml
 curl https://fmlds-eval-workshop-phoenix.fly.dev/healthz     # → "OK"
 ```
 
-⚠️ **Version lockstep gotcha:** the Docker image and the pip package have
-*different version lines*. A Python 3.9 venv resolves `arize-phoenix` 12.x,
-but the image tags jump to `version-22.x` — there is **no** `version-12.15.1`
-image. Colab runs Python 3.11+, where pip gives 22.x. Everything is pinned to
-**22.0.0** in lockstep: the image in `infra/phoenix.toml` and the notebook 2
-pip cell. Do not "upgrade" one without the other.
+⚠️ **Keep the local notebook app separate from the room board:** the board image
+is pinned to Phoenix **22.0.0**. Notebook 2 installs Phoenix **12.15.1** locally
+because Phoenix 22 pulls OpenTelemetry 1.45+ and SQLGlot 30.21, which conflict
+with Colab's Google ADK and Ibis pins. The notebook pins compatible telemetry
+dependencies; do not change these versions without checking the Colab resolver.
 
 ⚠️ **Auth is ON by default** (the Docker image binds a non-loopback host, and
 auth follows the bind address). Everything returns `401 Invalid token` until
@@ -437,7 +436,7 @@ secret and do the live pass.
       **2,500 rows from the raw GitHub URL** → compare the agent's answers with
       the signed-amount, fragmented-merchant, and missing-location examples.
 - [ ] **Notebook 2 (10 min, live):** bootstrap fetches `utils.py` from the repo
-       → `%pip` installs Phoenix 22.0.0 and OpenInference instrumentation →
+       → `%pip` installs Colab-compatible Phoenix/OpenInference/OTel pins →
        `launch_app()` prints a **Colab-proxied URL** → register the local OTLP
        endpoint and instrument OpenAI calls → traces show an AGENT root, nested
        router CHAIN/LLM spans, and tool-handling CHAIN/TOOL spans with I/O →
@@ -456,8 +455,8 @@ secret and do the live pass.
 |---|---|
 | Badge/notebook 404 on GitHub | filename typo in the badge URL — check the three badge links in README |
 | Data load falls back to local / fails | raw.githubusercontent propagation lag — wait 1 min, re-run; verify repo is public |
-| `%pip` cell version conflict | the pins (22.0.0 / 0.1.76) must match `PHOENIX_VERSION` in `scripts/build_notebooks.py` |
-| `launch_app()` URL is localhost | old phoenix version in the runtime — Runtime → Restart, re-run the pip cell |
+| Colab `%pip` reports Google ADK / Ibis dependency conflicts | Phoenix 22 requires newer OpenTelemetry and SQLGlot than Colab allows | keep notebook Phoenix at 12.15.1 with the explicit OTel / SQLGlot pins in its install cell; the room board remains at 22.0.0 |
+| `launch_app()` URL is localhost or inaccessible in Colab | Colab proxy did not activate | Runtime → Restart, rerun the Phoenix launch cell, and use its printed URL |
 | Publish cell 401 | `PHOENIX_API_KEY` secret missing/typo (the board has auth ON) |
 | Publish "duplicate spans" | you already published from this runtime — expected on re-runs |
 | 429s during the suite | 15 RPM seat cap doing its job — wait ~30 s and re-run the cell |
@@ -511,7 +510,6 @@ In this order:
 | Board returns `401 Invalid token` for everything | Phoenix 22 Docker image enables auth by default (non-loopback bind) | expected — mint a system API key via the `PHOENIX_ADMIN_SECRET` chain (Phase 4b); participants' publish cell sends it as `PHOENIX_API_KEY` |
 | `POST /v1/system/api_keys` → 422 "Field required: data" | request body must wrap in a `data` object | `{"data": {"name": "..."}}` |
 | System-key response has no `api_key` field | the response field is `key`, and the value is shown **once** | parse `data.key`; if you lose it, mint a new key (old one can't be retrieved) |
-| Phoenix image tag `version-12.15.1` doesn't exist | Docker image and pip package version lines differ; py3.9 pip resolves 12.x while images start at 22.x | pin **22.0.0** in lockstep: image `arizephoenix/phoenix:version-22.0.0` + notebook pip cell `arize-phoenix==22.0.0` |
 | `phoenix.client.Client(endpoint=...)` → TypeError | that was the old client; the new one takes `base_url` | `Client(base_url=..., api_key=...)` |
 | Participant publish rejected: "duplicate spans" | notebook tracer ids are deterministic — every seat emits identical ids; board enforces global uniqueness | notebook 2's publish cell remaps ids per seat (already built in) |
 | Local `get_spans` 404 on project X | project not created yet — spans not ingested (or `register()` defaulted to gRPC 4317, which the in-notebook session doesn't serve) | `register(endpoint="http://127.0.0.1:6006/v1/traces", protocol="http/protobuf")` — verified pattern, committed in notebook 2 |

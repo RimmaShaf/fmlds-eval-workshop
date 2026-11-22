@@ -20,7 +20,7 @@
 
 1. **Notebook 1 — Build your Agent** — a hand-rolled tool-calling agent (schema lookup, pandas analysis, financial rules, and charting) with a naive one-line system prompt. It demonstrates sign/refund mistakes, merchant aliases, and requests that the available data may not support.
 2. **Notebook 2 — Tracing with Phoenix** — uses OpenTelemetry and OpenInference instrumentation to capture LLM, agent, chain, and tool spans. Every participant sends traces to the shared `00-Part-2-tracing-set-up` project; inspect tool inputs/outputs and compare a missing-information request with a successful analysis.
-3. **Notebook 3 — Evaluations** — introduces separate router, tool/code, and answer evaluators on three golden cases, compares a prompt variant, and records per-evaluator and overall scores in Phoenix. It guides participants through failure review and golden-case curation; a one-case model comparison is optional, while the full 11-case suite stays in CI.
+3. **Notebook 3 — Evaluations** — uploads the 11-case golden dataset to Phoenix, defines separate router, tool/code, answer, and overall evaluators, and compares prompt experiments in the dataset's Experiments tab. It guides participants through failure review and golden-case curation; model comparison is an optional extension.
 
 ## Repo map
 
@@ -74,7 +74,7 @@ Paste `infra/seat_keys.csv` rows into the **view-only** Google Sheet; print desk
 
 **3. CI gate:** already wired (`.github/workflows/evals.yml`): dataset integrity check, deterministic mock golden-suite gate, and a self-test proving the gate catches a known-bad regression. For scheduled live-model evals through the workshop gateway, add a `LITELLM_API_KEY` GitHub secret.
 
-**4. Room-wide observability (Phoenix board):** the LiteLLM gateway keeps server-side request traces in `gateway`. Notebook 2 writes participant agent/LLM/chain/tool spans to `00-Part-2-tracing-set-up`; Notebook 3 writes evaluation traces and grades to `01-Part-3-evaluations`. All projects are on the same Fly-hosted board, and session IDs make participant runs filterable.
+**4. Room-wide observability (Phoenix board):** the LiteLLM gateway keeps server-side request traces in `gateway`. Notebook 2 writes participant agent/LLM/chain/tool spans to `00-Part-2-tracing-set-up`; Notebook 3 writes eval traces to `01-Part-3-evaluations` and creates native dataset experiments with evaluator score columns. All results are on the same Phoenix board, and session IDs make participant traces filterable.
 
 **5. Emergency kit:** 5 mobile hotspots + 5 reserve master-pool keys (create with `make_seat_keys.py --seats 5 --budget 5`).
 
@@ -103,7 +103,7 @@ ruff check scripts/ utils.py
 
 `utils.py` and the three `.ipynb` files are **generated artifacts** — never edit them by hand; edit the source fragments in `scripts/build_notebooks.py` and regenerate. The same fragments are both displayed in the notebooks and imported by CI, so notebook and CI can never drift apart.
 
-The headless mock CI suite is deterministic: baseline **10/11**, known-bad regression **6/11** (the failures demonstrate polarity/refund handling, merchant aliases, fabrication, and hallucinated reassurance). The short notebook lab uses live calls and only three cases, so its scores can vary. To run the complete live gateway suite, set `LITELLM_API_KEY` and pass `--mode gateway` to `scripts/run_evals.py`.
+The headless mock CI suite is deterministic: baseline **10/11**, known-bad regression **6/11** (the failures demonstrate polarity/refund handling, merchant aliases, fabrication, and hallucinated reassurance). Notebook 3 runs live Phoenix experiments over the same 11 golden cases; live results vary. To run the headless suite, use `scripts/run_evals.py`.
 
 ## Security notes
 

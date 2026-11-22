@@ -392,10 +392,9 @@ it on the desk cards.
    `litellm.metadata.user_api_key_alias: "seat-01"`.
 2. Run notebook 2 with the desk-card `PHOENIX_API_KEY`; traces should appear in
    `00-Part-2-tracing-set-up`.
-3. Run Notebook 3's three-case baseline and prompt variant; component evaluations and
-   overall experiment scores should appear on the parent spans in
-   `01-Part-3-evaluations`, with per-case annotations on agent spans. Confirm the LiteLLM
-   gateway traces remain in `gateway`.
+3. Run Notebook 3's golden dataset upload, baseline, and prompt variant; both named
+   experiments and their evaluator score columns should appear in the dataset's Experiments
+   tab. Confirm the linked task traces appear and gateway traces remain in `gateway`.
 4. Log into the board UI and confirm the projector can select each of the three projects.
 
 ### Human tasks for this phase
@@ -407,8 +406,9 @@ it on the desk cards.
   `PHOENIX_API_KEY` required by notebooks 2–3 (the participant key from
   `infra/phoenix_board.key`). Both notebooks contain the public board URL.
 
-Notebooks 2 and 3 export spans directly, so there is no separate publish step or
-ID remapping. The OpenTelemetry SDK generates distinct trace/span IDs for each run.
+Notebooks 2 and 3 export spans directly. Notebook 3 also creates dataset experiments and
+evaluator results through the Phoenix client; there is no separate publish step or ID
+remapping. The OpenTelemetry SDK generates distinct trace/span IDs for each run.
 
 ---
 
@@ -436,12 +436,11 @@ secret and do the live pass.
       `utils.py` and the board API key → register the board's OTLP endpoint →
       missing-location and refund-netting runs appear immediately in project
       `00-Part-2-tracing-set-up` with nested AGENT/CHAIN/LLM/TOOL spans and I/O
-- [ ] **Notebook 3 (10–15 min, live):** bootstrap → three-case baseline → inspect
-      router/skill score columns → run the prompt variant on the same cases → compare
-      scores and review a candidate failure in Phoenix. The prompt experiment is live
-      and stochastic; do not require a specific pass count. The optional model comparison
-      makes two runs on one numeric case. Use `scripts/run_evals.py` for the full 11-case
-      suite and its deterministic mock regression check.
+- [ ] **Notebook 3 (live):** bootstrap → upload the 11-case golden dataset → run the
+      baseline and prompt-variant experiments → compare per-evaluator and overall scores
+      in the dataset's Experiments tab → inspect a low-scoring example and its trace.
+      Results vary across live model runs; do not require a specific pass count. Model
+      comparison is opt-in. The deterministic mock regression gate remains in CI.
 
 **If something breaks, likely causes:**
 | Symptom | Fix |

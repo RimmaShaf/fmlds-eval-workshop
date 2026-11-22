@@ -1246,17 +1246,21 @@ nb2_cells.append(md("""> Install packages before importing the agent or tracing 
 nb2_cells.append(md("""---
 ## Bootstrap the workshop agent
 
-Fetch `utils.py` only if needed, load the synthetic ledger, and connect through the same
+Refresh stale `utils.py` copies, load the synthetic ledger, and connect through the same
 workshop gateway and seat key as notebook 1.
 """))
 
 nb2_cells.append(code(f"""import urllib.request
 import os
+import importlib
+from pathlib import Path
 
-if not os.path.exists("utils.py"):
+utils_path = Path("utils.py")
+if not utils_path.exists() or "def set_span_tracer(tracer, attributes=None):" not in utils_path.read_text():
     urllib.request.urlretrieve("{RAW}/utils.py", "utils.py")
 
 import utils
+utils = importlib.reload(utils)
 
 utils.load_data()
 utils.connect()
@@ -1302,7 +1306,10 @@ Inputs, outputs, and tool errors are recorded as span attributes.
 nb2_cells.append(code(r"""from openinference.instrumentation.openai import OpenAIInstrumentor
 from openinference.semconv.trace import SpanAttributes
 
-OpenAIInstrumentor().instrument(tracer_provider=tracer_provider)
+openai_instrumentor = OpenAIInstrumentor()
+if openai_instrumentor.is_instrumented_by_opentelemetry:
+    openai_instrumentor.uninstrument()
+openai_instrumentor.instrument(tracer_provider=tracer_provider)
 utils.set_span_tracer(
     tracer_provider.get_tracer(__name__),
     attributes={SpanAttributes.SESSION_ID: SEAT},
@@ -1436,11 +1443,15 @@ Load the agent and golden suite, connect to the workshop gateway, and read the b
 
 nb3_cells.append(code(f'''import urllib.request
 import os
+import importlib
+from pathlib import Path
 
-if not os.path.exists("utils.py"):
+utils_path = Path("utils.py")
+if not utils_path.exists() or "def set_span_tracer(tracer, attributes=None):" not in utils_path.read_text():
     urllib.request.urlretrieve("{RAW}/utils.py", "utils.py")
 
 import utils
+utils = importlib.reload(utils)
 
 utils.load_data()
 utils.load_golden()
@@ -1476,7 +1487,10 @@ tracer_provider = register(
     batch=False,
     api_key=PHOENIX_API_KEY,
 )
-OpenAIInstrumentor().instrument(tracer_provider=tracer_provider)
+openai_instrumentor = OpenAIInstrumentor()
+if openai_instrumentor.is_instrumented_by_opentelemetry:
+    openai_instrumentor.uninstrument()
+openai_instrumentor.instrument(tracer_provider=tracer_provider)
 utils.set_span_tracer(
     tracer_provider.get_tracer(__name__),
     attributes={SpanAttributes.SESSION_ID: SEAT},

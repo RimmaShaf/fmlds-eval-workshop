@@ -332,9 +332,9 @@ fly deploy -c infra/phoenix.toml
 curl https://fmlds-eval-workshop-phoenix.fly.dev/healthz     # → "OK"
 ```
 
-⚠️ **Use the lightweight SDK in notebooks:** Notebook 2 installs the independently
-versioned `arize-phoenix-otel` and `arize-phoenix-client` packages, not a local server.
-The board remains Phoenix **22.0.0**; the SDKs send OTLP/HTTP directly to the board.
+⚠️ **Use the lightweight SDK in notebooks:** Notebooks 2 and 3 install the
+independently versioned `arize-phoenix-otel` and `arize-phoenix-client` packages,
+not a local server. The board remains Phoenix **22.0.0**; the SDKs send OTLP/HTTP directly.
 
 ⚠️ **Auth is ON by default** (the Docker image binds a non-loopback host, and
 auth follows the bind address). Everything returns `401 Invalid token` until

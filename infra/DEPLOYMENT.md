@@ -392,9 +392,10 @@ it on the desk cards.
    `litellm.metadata.user_api_key_alias: "seat-01"`.
 2. Run notebook 2 with the desk-card `PHOENIX_API_KEY`; traces should appear in
    `00-Part-2-tracing-set-up`.
-3. Run Notebook 3's three-case baseline and prompt variant; traces and evaluator
-   annotations should appear in `01-Part-3-evaluations`. Confirm the LiteLLM gateway
-   traces remain in `gateway`.
+3. Run Notebook 3's three-case baseline and prompt variant; component evaluations and
+   overall experiment scores should appear on the parent spans in
+   `01-Part-3-evaluations`, with per-case annotations on agent spans. Confirm the LiteLLM
+   gateway traces remain in `gateway`.
 4. Log into the board UI and confirm the projector can select each of the three projects.
 
 ### Human tasks for this phase

@@ -20,7 +20,7 @@
 
 1. **Notebook 1 — Build your Agent** — a hand-rolled tool-calling agent (schema lookup, pandas analysis, financial rules, and charting) with a naive one-line system prompt. It demonstrates sign/refund mistakes, merchant aliases, and requests that the available data may not support.
 2. **Notebook 2 — Tracing with Phoenix** — uses OpenTelemetry and OpenInference instrumentation to capture LLM, agent, chain, and tool spans. Every participant sends traces to the shared `00-Part-2-tracing-set-up` project; inspect tool inputs/outputs and compare a missing-information request with a successful analysis.
-3. **Notebook 3 — Evaluations** — introduces skill and router evals on three golden cases, compares a prompt variant in Phoenix, and guides participants through failure review and golden-case curation. A one-case model comparison is optional; the full 11-case suite stays in CI.
+3. **Notebook 3 — Evaluations** — introduces separate router, tool/code, and answer evaluators on three golden cases, compares a prompt variant, and records per-evaluator and overall scores in Phoenix. It guides participants through failure review and golden-case curation; a one-case model comparison is optional, while the full 11-case suite stays in CI.
 
 ## Repo map
 

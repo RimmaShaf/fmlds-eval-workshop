@@ -1602,7 +1602,7 @@ except Exception as exc:
 
 from utils import (
     AGENT_MODEL, CREATIVE_SYSTEM_PROMPT, HARDENED_SYSTEM_PROMPT, GOLDEN,
-    SUITE_RESULTS, check_code, check_numeric, check_router, run_agent, run_suite,
+    REQUIRED_TOOLS, SUITE_RESULTS, check_code, check_numeric, check_router, run_agent, run_suite,
 )
 
 print("bootstrap done |", len(GOLDEN["cases"]), "golden cases | seat:", SEAT)
@@ -1647,10 +1647,13 @@ nb3_cells.append(md("""---
 
 An evaluation is a repeatable question, expected behavior, and evaluator. We will start with
 three examples from the frozen golden dataset: signed expenses, merchant aliases, and a
-missing schema field. The same checks and examples will be used for every variant.
+missing schema field. The same checks and examples will be used for every variant. Each
+variant gets a parent Phoenix span with an overall pass rate and separate router, tool, and
+answer scores, similar to the per-evaluator summaries in L11.
 """))
 
 nb3_cells.append(code(r'''from IPython.display import display
+import pandas as pd
 
 STARTER_IDS = ["total_expenses_october", "starbucks_total", "merchant_location"]
 STARTER_CASES = [case for case in GOLDEN["cases"] if case["id"] in STARTER_IDS]
@@ -1661,21 +1664,90 @@ import datetime as _datetime
 RUN_TAG = _datetime.datetime.now(_datetime.timezone.utc).strftime("lab3-%Y%m%d-%H%M%S-%f")
 BASELINE_LABEL = f"{RUN_TAG}/prompt-baseline"
 
-baseline = run_suite(
-    BASELINE_LABEL,
-    HARDENED_SYSTEM_PROMPT,
-    temperature=0.0,
-    cases=STARTER_CASES,
+EXPERIMENT_RUNS = []
+
+
+def run_phoenix_experiment(label, system_prompt, cases, temperature=0.0, model=None):
+    """Run one fixed case set under a named Phoenix parent span and score it."""
+    span_attributes = {
+        SpanAttributes.SESSION_ID: SEAT,
+        "experiment.variant": label,
+        "experiment.case_ids": [case["id"] for case in cases],
+    }
+    experiment_tracer = tracer_provider.get_tracer("notebook3.experiments")
+    with experiment_tracer.start_as_current_span(
+        f"experiment/{label}", attributes=span_attributes
+    ) as experiment_span:
+        scorecard = run_suite(
+            label, system_prompt, temperature, cases=cases, model=model
+        )
+
+        router_score = float(scorecard["router_ok"].mean())
+        code_rows = scorecard.loc[scorecard["n_chunks"].fillna(0) > 0]
+        tool_score = (
+            float((code_rows["code_valid"] & code_rows["no_traceback"]).mean())
+            if len(code_rows) else None
+        )
+        answer_scores = []
+        for row in scorecard.to_dict(orient="records"):
+            numeric = row.get("numeric_ok")
+            judged = row.get("judge_pass")
+            if pd.notna(numeric):
+                answer_scores.append(float(numeric))
+            elif pd.notna(judged):
+                answer_scores.append(float(judged))
+        answer_score = sum(answer_scores) / len(answer_scores) if answer_scores else None
+        overall_score = float(scorecard["PASS"].mean())
+        passed = int(scorecard["PASS"].sum())
+
+        component_scores = {
+            "router": router_score,
+            "tool": tool_score,
+            "answer": answer_score,
+            "overall": overall_score,
+        }
+        for name, value in component_scores.items():
+            if value is not None:
+                experiment_span.set_attribute(f"eval.{name}_score", value)
+        experiment_span.set_attribute("eval.passed_cases", passed)
+        experiment_span.set_attribute("eval.total_cases", len(scorecard))
+        experiment_span_id = f"{experiment_span.get_span_context().span_id:016x}"
+
+    run_record = {
+        "label": label,
+        "scorecard": scorecard,
+        "span_id": experiment_span_id,
+        "scores": component_scores,
+        "passed": passed,
+        "total": len(scorecard),
+    }
+    EXPERIMENT_RUNS.append(run_record)
+    tool_text = f"{tool_score:.0%}" if tool_score is not None else "n/a"
+    answer_text = f"{answer_score:.0%}" if answer_score is not None else "n/a"
+    print(
+        f"{label} scores | overall={overall_score:.0%} ({passed}/{len(scorecard)})"
+        f" | router={router_score:.0%} | tool={tool_text} | answer={answer_text}"
+    )
+    return scorecard
+
+
+baseline = run_phoenix_experiment(
+    BASELINE_LABEL, HARDENED_SYSTEM_PROMPT, STARTER_CASES, temperature=0.0
 )
-display(baseline[[c for c in ("case", "router_ok", "tools_used", "numeric_ok", "judge_pass", "PASS") if c in baseline]])
+display(baseline[[c for c in ("case", "router_ok", "tools_used", "code_valid", "no_traceback", "numeric_ok", "judge_pass", "PASS") if c in baseline]])
 ''', ("demo",)))
 
 nb3_cells.append(md("""### What are the evaluators checking?
 
-The **router eval** checks whether the agent called the expected tool. The **skill evals**
-check whether generated code ran and whether a numeric answer matched frozen ground truth;
-the missing-location case uses a judge for honesty and usefulness. These are separate signals:
-a correct tool choice does not guarantee a correct answer.
+The full suite runs all applicable checks for every case. We'll call three of them separately
+on one known case so the result of each evaluator is visible:
+
+1. **Router evaluator** — did the agent call the required tool?
+2. **Tool/code evaluator** — did the analysis tool generate valid code that ran successfully?
+3. **Answer evaluator** — did the final answer match the frozen ground truth?
+
+The missing-location case uses a separate judge for honesty and usefulness. A router pass does
+not imply a tool or answer pass; Phoenix will show each score independently.
 
 The analysis tool also cautions the code generator to inspect the full dataset for likely
 entity variants and decoys, using bounded summaries instead of dumping rows. The merchant case
@@ -1683,10 +1755,63 @@ tests whether that general caution is enough; it is not a guarantee, so inspect 
 code and trace evidence.
 """))
 
+nb3_cells.append(md("""#### Evaluator 1 — router choice
+
+This check reads the actual tool calls from the agent run and compares them with the tool
+required by the golden case. It does not judge whether the tool's result is correct.
+"""))
+
 nb3_cells.append(code(r'''example_case = next(c for c in STARTER_CASES if c["id"] == "total_expenses_october")
 example_result = SUITE_RESULTS[BASELINE_LABEL][example_case["id"]]
-print("router eval:", check_router(example_case, example_result))
-print("skill evals:", {**check_code(example_result), **check_numeric(example_case, example_result)})
+router_eval = check_router(example_case, example_result)
+router_eval["label"] = "correct" if router_eval["router_ok"] else "incorrect"
+router_eval["score"] = 1 if router_eval["router_ok"] else 0
+router_score = float(router_eval["score"])
+print(router_eval)
+print(f"Router score: {router_score:.0f}/1")
+''', ("demo",)))
+
+nb3_cells.append(md("""#### Evaluator 2 — analysis tool code
+
+For code-producing cases, this checks syntax and whether execution raised an error. It is a
+tool/skill check, not an answer-correctness check. Non-code cases do not receive this score.
+"""))
+
+nb3_cells.append(code(r'''tool_eval = check_code(example_result)
+tool_ok = bool(tool_eval["code_valid"] and tool_eval["no_traceback"])
+tool_eval["label"] = "runnable" if tool_ok else "not_runnable"
+tool_eval["score"] = 1 if tool_ok else 0
+tool_score = float(tool_eval["score"])
+print(tool_eval)
+print(f"Tool/code score: {tool_score:.0f}/1")
+''', ("demo",)))
+
+nb3_cells.append(md("""#### Evaluator 3 — answer against ground truth
+
+This compares the extracted `FINAL ANSWER` with the case's frozen numeric value. It can fail
+even when the router and tool/code evaluators pass.
+"""))
+
+nb3_cells.append(code(r'''answer_eval = check_numeric(example_case, example_result)
+answer_eval["label"] = "correct" if answer_eval["numeric_ok"] else "incorrect"
+answer_eval["score"] = 1 if answer_eval["numeric_ok"] else 0
+answer_score = float(answer_eval["score"])
+print(answer_eval)
+print(f"Answer score: {answer_score:.0f}/1")
+''', ("demo",)))
+
+nb3_cells.append(md("""#### Combine component scores for this case
+
+The teaching score below is the average of the three applicable evaluators. The release-style
+`PASS` remains stricter: every required check must pass. Suite/experiment overall score is the
+fraction of cases that pass all their required checks.
+"""))
+
+nb3_cells.append(code(r'''component_scores = [router_score, tool_score, answer_score]
+case_overall_score = sum(component_scores) / len(component_scores)
+case_pass = all(score == 1.0 for score in component_scores)
+print(f"Component-average score: {case_overall_score:.0%}")
+print(f"Strict case result: {'PASS' if case_pass else 'FAIL'}")
 ''', ("demo",)))
 
 nb3_cells.append(md("""---
@@ -1696,20 +1821,20 @@ An experiment changes one thing and holds the rest fixed: **same questions, mode
 temperature, and evaluators**. The variant below intentionally relaxes tool-use and
 precision guidance. Run it, compare the scores, then inspect the corresponding traces.
 
-This lab uses Phoenix traces and evaluation annotations to review the variants. It does not
-create a separate Phoenix Dataset/Experiment object; this lightweight experiment keeps the
-Notebook 2 client setup unchanged. The SDK-managed dataset workflow can be an advanced follow-up.
+Each variant is recorded in Phoenix as a labeled parent span with its case IDs, evaluator
+averages, and overall pass rate. Its agent traces are children of that span, so you can compare
+the score summary and inspect the underlying calls in one place.
 """))
 
 nb3_cells.append(code(r'''CANDIDATE_SYSTEM_PROMPT = CREATIVE_SYSTEM_PROMPT
 CANDIDATE_LABEL = f"{RUN_TAG}/prompt-candidate"
 print("Candidate system prompt:\n", CANDIDATE_SYSTEM_PROMPT)
 
-candidate = run_suite(
+candidate = run_phoenix_experiment(
     CANDIDATE_LABEL,
     CANDIDATE_SYSTEM_PROMPT,
+    STARTER_CASES,
     temperature=0.0,  # held fixed to isolate the prompt change
-    cases=STARTER_CASES,
 )
 display(candidate[[c for c in ("case", "router_ok", "tools_used", "numeric_ok", "judge_pass", "PASS") if c in candidate]])
 ''', ("demo",)))
@@ -1718,9 +1843,25 @@ nb3_cells.append(code(r'''comparison = baseline[["case", "PASS", "router_ok"]].m
     candidate[["case", "PASS", "router_ok"]], on="case", suffixes=("_baseline", "_candidate")
 )
 comparison["regressed"] = comparison["PASS_baseline"] & ~comparison["PASS_candidate"]
-print(f"baseline: {int(baseline['PASS'].sum())}/{len(baseline)}")
-print(f"candidate: {int(candidate['PASS'].sum())}/{len(candidate)}")
+print(f"baseline overall: {baseline['PASS'].mean():.0%} ({int(baseline['PASS'].sum())}/{len(baseline)})")
+print(f"candidate overall: {candidate['PASS'].mean():.0%} ({int(candidate['PASS'].sum())}/{len(candidate)})")
 comparison
+''', ("demo",)))
+
+nb3_cells.append(md("""### Read the evaluator summary
+
+Each component score is the fraction of applicable cases that passed that evaluator. The
+**overall score** is the fraction of cases passing every required check. This mirrors L11's
+per-evaluator experiment summary while keeping the strict all-checks pass rate visible.
+The same component averages and overall score are attached to each parent experiment span in
+Phoenix, in addition to the per-case annotations.
+"""))
+
+nb3_cells.append(code(r'''experiment_summary = pd.DataFrame([
+    {"variant": run["label"], **run["scores"]}
+    for run in EXPERIMENT_RUNS
+])
+experiment_summary
 ''', ("demo",)))
 
 nb3_cells.append(md("""### Optional: compare two router models instead
@@ -1739,8 +1880,8 @@ MODEL_B = "gpt-4o"
 model_a_label = f"{RUN_TAG}/model-{MODEL_A}"
 model_b_label = f"{RUN_TAG}/model-{MODEL_B}"
 
-model_a = run_suite(model_a_label, HARDENED_SYSTEM_PROMPT, 0.0, cases=MODEL_CASES, model=MODEL_A)
-model_b = run_suite(model_b_label, HARDENED_SYSTEM_PROMPT, 0.0, cases=MODEL_CASES, model=MODEL_B)
+model_a = run_phoenix_experiment(model_a_label, HARDENED_SYSTEM_PROMPT, MODEL_CASES, model=MODEL_A)
+model_b = run_phoenix_experiment(model_b_label, HARDENED_SYSTEM_PROMPT, MODEL_CASES, model=MODEL_B)
 display(model_a[["case", "PASS", "latency_s"]].merge(
     model_b[["case", "PASS", "latency_s"]], on="case", suffixes=(f"_{MODEL_A}", f"_{MODEL_B}")
 ))
@@ -1798,13 +1939,15 @@ The notebook note above is a review candidate, not an automatic dataset change.
 
 nb3_cells.append(md("""## Attach evaluator scores to the experiment traces
 
-This adds code-eval annotations to traces using unique run labels, so repeated notebook runs
-do not accidentally attach scores to an earlier trace. Human review remains a separate label.
+Each agent trace gets separate `Router Eval`, `Tool Eval`, `Ground Truth Eval` (or `LLM Judge
+Eval`), and `Overall Case Eval` annotations. Each experiment's parent span gets aggregate
+router, tool, answer, and **overall pass-rate** scores. In Phoenix, open the parent span named
+`experiment/<run label>` to see the overall score and component-score attributes; use the
+named evaluations to compare individual traces and variants. Human review remains separate.
 """))
 
 nb3_cells.append(code(r'''import pandas as pd
 
-scorecards = [(BASELINE_LABEL, baseline), (CANDIDATE_LABEL, candidate)]
 spans = phoenix_client.spans.get_spans(project_identifier=PHOENIX_EVAL_PROJECT, limit=2000)
 span_ids = {}
 for span in spans:
@@ -1816,25 +1959,98 @@ for span in spans:
     if span_name and span_id:
         span_ids[span_name] = span_id
 
-annotations = []
-for label, scorecard in scorecards:
+annotation_groups = {}
+
+
+def add_annotation(name, span_id, score, label, explanation):
+    if span_id is None or score is None or pd.isna(score):
+        return
+    annotation_groups.setdefault(name, []).append({
+        "span_id": span_id,
+        "label": label,
+        "score": float(score),
+        "explanation": explanation,
+    })
+
+
+experiment_annotation_names = {
+    "router": "Experiment Router Score",
+    "tool": "Experiment Tool Score",
+    "answer": "Experiment Answer Score",
+    "overall": "Overall Experiment Score",
+}
+case_annotation_names = {
+    "router": "Router Eval",
+    "tool": "Tool Eval",
+    "numeric": "Ground Truth Eval",
+    "judge": "LLM Judge Eval",
+    "overall": "Overall Case Eval",
+}
+
+for run in EXPERIMENT_RUNS:
+    label = run["label"]
+    scorecard = run["scorecard"]
+    for component, annotation_name in experiment_annotation_names.items():
+        score = run["scores"].get(component)
+        if score is not None:
+            add_annotation(
+                annotation_name,
+                run["span_id"],
+                score,
+                f"{score:.0%}",
+                f"{run['passed']}/{run['total']} cases pass all required checks; {component} evaluator average.",
+            )
+
     for row in scorecard.to_dict(orient="records"):
         span_id = span_ids.get(f"{label}/{row['case']}")
-        if span_id:
-            annotations.append({
-                "span_id": span_id,
-                "label": "PASS" if row["PASS"] else "FAIL",
-                "score": float(bool(row["PASS"])),
-                "explanation": f"{label}: router={row.get('router_ok')}; numeric={row.get('numeric_ok')}",
-            })
+        add_annotation(
+            case_annotation_names["router"], span_id,
+            float(bool(row["router_ok"])),
+            "correct" if row["router_ok"] else "incorrect",
+            f"Required tools: {REQUIRED_TOOLS.get(row['case'], [])}; used: {row.get('tools_used', '')}",
+        )
 
-if annotations:
-    phoenix_client.spans.log_span_annotations_dataframe(
-        dataframe=pd.DataFrame(annotations),
-        annotation_name="Workshop golden checks",
-        annotator_kind="CODE",
-    )
-    print(f"Logged {len(annotations)} evaluator annotations")
+        n_chunks = row.get("n_chunks")
+        if pd.notna(n_chunks) and n_chunks > 0:
+            tool_ok = bool(row.get("code_valid")) and bool(row.get("no_traceback"))
+            add_annotation(
+                case_annotation_names["tool"], span_id, float(tool_ok),
+                "runnable" if tool_ok else "not_runnable",
+                f"Generated chunks={int(n_chunks)}; valid={row.get('code_valid')}; no_traceback={row.get('no_traceback')}",
+            )
+
+        numeric_ok = row.get("numeric_ok")
+        if pd.notna(numeric_ok):
+            add_annotation(
+                case_annotation_names["numeric"], span_id, float(numeric_ok),
+                "correct" if numeric_ok else "incorrect",
+                f"Extracted={row.get('extracted')}; tolerance-checked against golden ground truth.",
+            )
+        judge_pass = row.get("judge_pass")
+        if pd.notna(judge_pass):
+            add_annotation(
+                case_annotation_names["judge"], span_id, float(judge_pass),
+                "pass" if judge_pass else "fail",
+                f"{label}: behavior/advisory rubric result.",
+            )
+
+        passed = bool(row["PASS"])
+        add_annotation(
+            case_annotation_names["overall"], span_id, float(passed),
+            "PASS" if passed else "FAIL",
+            f"{label}: all required checks {'passed' if passed else 'did not pass'}.",
+        )
+
+if annotation_groups:
+    for annotation_name, rows in annotation_groups.items():
+        phoenix_client.spans.log_span_annotations_dataframe(
+            dataframe=pd.DataFrame(rows),
+            annotation_name=annotation_name,
+            annotator_kind="CODE",
+        )
+        values = [row["score"] for row in rows]
+        print(f"{annotation_name}: {sum(values) / len(values):.0%} average across {len(values)} spans")
+    print("Named evaluator scores and overall experiment scores are logged to Phoenix")
 else:
     print("No matching spans found yet; rerun this cell after the traces arrive")
 ''', ("demo",)))

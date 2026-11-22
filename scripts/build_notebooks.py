@@ -1310,7 +1310,9 @@ except Exception as exc:
     phoenix_client.projects.list()
 from utils import NAIVE_SYSTEM_PROMPT, run_agent
 
-print("bootstrap done | seat tag:", SEAT, "| shared Phoenix project:", PHOENIX_PROJECT)
+print("bootstrap done")
+print("Phoenix project:", PHOENIX_PROJECT)
+print("Phoenix session.id:", SEAT)
 """, ("core",)))
 
 nb2_cells.append(md("""## 3. Send traces to the shared Phoenix board
@@ -1328,8 +1330,7 @@ tracer_provider = register(
     batch=False,
     api_key=PHOENIX_API_KEY,
 )
-print("Shared Phoenix project:", PHOENIX_PROJECT)
-print("Phoenix board:", PHOENIX_BOARD_URL)
+print("OTLP collector:", f"{PHOENIX_BOARD_URL}/v1/traces")
 """, ("core",)))
 
 nb2_cells.append(md("""## 4. Why trace the agent?
@@ -1455,58 +1456,55 @@ print(f"Tully's decoy rows to exclude:      {tully_decoy_count}")
 nb2_cells.append(code("show_tool_io(starbucks_run)", ("demo",)))
 
 nb2_cells.append(md("""---
-## 7. Challenge 3: what happens when the data has no requested field?
+## 7. Free-text: ask your own question
 
-The ledger has no merchant-location column. Ask for a location breakdown, then inspect the
-schema and tool response rather than assuming what the model will say.
+Try any finance question about the ledger. The prompt below is intentionally open-ended:
+the agent chooses its tools, and the trace shows how it responds.
 """))
 
-nb2_cells.append(code(r"""missing_location = run_agent(
-    "Show me my spending broken down by merchant location.",
+nb2_cells.append(code(r"""free_text_query = input("Your question for the financial agent: ")
+free_text_result = run_agent(
+    free_text_query,
     system_prompt=NAIVE_SYSTEM_PROMPT,
     temperature=0.0,
-    label="nb2/missing-location",
+    label=f"nb2/free-text/{SEAT}",
 )
-print(missing_location["answer"])
+print(free_text_result["answer"])
 """, ("demo",)))
+nb2_cells.append(code("show_tool_io(free_text_result)", ("demo",)))
 
-nb2_cells.append(code(r"""print("merchant_city exists:", "merchant_city" in df.columns)
-print("available columns:", sorted(df.columns.tolist()))
-""", ("demo",)))
-nb2_cells.append(code("show_tool_io(missing_location)", ("demo",)))
+nb2_cells.append(md(f"""---
+## Find your traces in Phoenix
 
-nb2_cells.append(md("""### Find your runs in the shared Part 2 project
+1. Open the [shared Phoenix board]({PHOENIX_BOARD_URL}).
+2. Select project **`{PHOENIX_PROJECT}`**.
+3. Search/filter spans by the **`session.id`** value printed during setup to isolate your
+   runs from the rest of the room.
+4. Expand an AGENT span to follow its nested router, LLM, tool, and tool-generated LLM spans.
 
-All participants share one Phoenix project, so use the `session.id` attribute to identify
-your spans. Expand an AGENT span to inspect its nested router, LLM, tool, and tool-generated
-LLM spans; compare that tree with the printed tool I/O above.
+The code below fetches your own trace spans into `my_spans` so you can inspect them in pandas.
 """))
 
-nb2_cells.append(code(r"""spans_df = phoenix_client.spans.get_spans_dataframe(project_identifier=PHOENIX_PROJECT, limit=1000)
+nb2_cells.append(code(r"""spans_df = phoenix_client.spans.get_spans_dataframe(project_identifier=PHOENIX_PROJECT, limit=5000)
+session_column = "attributes.session.id"
+trace_id_column = next((column for column in ("context.trace_id", "trace_id") if column in spans_df.columns), None)
+my_trace_ids = []
+if session_column in spans_df.columns and trace_id_column:
+    my_trace_ids = spans_df.loc[spans_df[session_column] == SEAT, trace_id_column].dropna().unique()
+    my_spans = spans_df[spans_df[trace_id_column].isin(my_trace_ids)].copy()
+else:
+    my_spans = spans_df[spans_df.get(session_column, "") == SEAT].copy() if session_column in spans_df else spans_df.iloc[0:0].copy()
 trace_columns = [
     column for column in (
-        "name", "span_kind", "parent_id", "context.trace_id",
-        "attributes.session.id", "attributes.input.value", "attributes.output.value",
+        "name", "span_kind", "parent_id", trace_id_column, session_column,
+        "status_code", "attributes.input.value", "attributes.output.value",
         "attributes.llm.token_count.prompt", "attributes.llm.token_count.completion",
     )
-    if column in spans_df.columns
+    if column and column in my_spans.columns
 ]
-trace_id_column = next((column for column in ("context.trace_id", "trace_id") if column in spans_df.columns), None)
-if trace_id_column and "attributes.session.id" in spans_df.columns:
-    my_trace_ids = spans_df.loc[spans_df["attributes.session.id"] == SEAT, trace_id_column].dropna().unique()
-    my_spans = spans_df[spans_df[trace_id_column].isin(my_trace_ids)]
-else:
-    my_spans = spans_df.tail(40)
+print(f"Loaded {len(my_spans)} spans across {len(my_trace_ids)} of your traces (session.id={SEAT})")
 display(my_spans[trace_columns])
 """, ("demo",)))
-
-nb2_cells.append(md("""---
-## All traces go to the shared board
-
-There is no separate publish step: notebook 2's agent, OpenAI, chain, and tool traces
-arrive in the shared `00-Part-2-tracing-set-up` project. Agent spans carry your `session.id`
-so the room can distinguish participant runs from one another and from gateway traces.
-"""))
 
 nb2_cells.append(md(f"""---
 ### Continue the workshop

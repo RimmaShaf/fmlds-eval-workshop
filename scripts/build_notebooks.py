@@ -1219,6 +1219,23 @@ that implementation rather than creating a second agent that could drift.
 """))
 
 nb2_cells.append(md("""---
+## 1. Install Colab-compatible tracing libraries
+
+The observability stack uses Phoenix's OpenTelemetry registration and OpenInference's
+OpenAI instrumentor. Colab pins OpenTelemetry for Google ADK and SQLGlot for Ibis, so this
+cell keeps those dependencies within Colab's supported versions. The local Phoenix UI
+package is older than the separately deployed room board.
+"""))
+
+nb2_cells.append(code(f'''%pip install -q arize-phoenix=={PHOENIX_VERSION} openinference-instrumentation-openai=={OPENINFERENCE_VERSION} google-auth==2.49.0 opentelemetry-api==1.42.1 opentelemetry-sdk==1.42.1 opentelemetry-exporter-otlp==1.42.1 opentelemetry-proto==1.42.1 opentelemetry-semantic-conventions==0.63b1 opentelemetry-instrumentation==0.63b1 "sqlglot>=23.4,<25.21"
+''', ("core",)))
+
+nb2_cells.append(md("""> If Colab asks for a runtime restart after installation, restart before continuing,
+> then rerun the notebook from the top. Install packages before importing the agent or
+> OpenTelemetry libraries so the instrumentor and SDK use the same versions.
+"""))
+
+nb2_cells.append(md("""---
 ## Bootstrap the workshop agent
 
 Fetch `utils.py` only if needed, load the synthetic ledger, and connect through the same
@@ -1240,18 +1257,6 @@ from utils import NAIVE_SYSTEM_PROMPT, run_agent
 
 print("bootstrap done | seat tag:", SEAT)
 """, ("core",)))
-
-nb2_cells.append(md("""---
-## 1. Install Colab-compatible tracing libraries
-
-The observability stack uses Phoenix's OpenTelemetry registration and OpenInference's
-OpenAI instrumentor. Colab pins OpenTelemetry for Google ADK and SQLGlot for Ibis, so this
-cell keeps those dependencies within Colab's supported versions. The local Phoenix UI
-package is older than the separately deployed room board.
-"""))
-
-nb2_cells.append(code(f'''%pip install -q arize-phoenix=={PHOENIX_VERSION} openinference-instrumentation-openai=={OPENINFERENCE_VERSION} google-auth==2.49.0 opentelemetry-api==1.42.1 opentelemetry-sdk==1.42.1 opentelemetry-exporter-otlp==1.42.1 opentelemetry-proto==1.42.1 opentelemetry-semantic-conventions==0.63b1 opentelemetry-instrumentation==0.63b1 "sqlglot>=23.4,<25.21"
-''', ("core",)))
 
 nb2_cells.append(md("""## 2. Start Phoenix and register an OpenTelemetry provider
 

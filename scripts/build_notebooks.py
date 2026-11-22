@@ -1247,8 +1247,8 @@ that implementation rather than creating a second agent that could drift.
 nb2_cells.append(md("""---
 ## 1. Install the lightweight Phoenix tracing SDKs
 
-Use the OTEL and client SDKs rather than installing a second Phoenix server inside Colab.
-The shared server is already running; these packages only export spans and query them.
+These packages let this notebook export OpenTelemetry spans and read them from the shared
+Phoenix board. They provide tracing and client access; the workshop server is already running.
 """))
 
 nb2_cells.append(code(f"%pip install -q arize-phoenix-otel=={PHOENIX_OTEL_VERSION} arize-phoenix-client=={PHOENIX_CLIENT_VERSION} openinference-instrumentation-openai=={OPENINFERENCE_VERSION}", ("core",)))
@@ -1258,12 +1258,20 @@ nb2_cells.append(md("""> Install packages before importing the agent or tracing 
 """))
 
 nb2_cells.append(md("""---
-## Bootstrap the workshop agent
+## Required action: provide the Phoenix board key
 
-Refresh stale `utils.py` copies, load the synthetic ledger, and connect through the same
-workshop gateway and seat key as notebook 1. The shared Phoenix board requires a separate
-participant `PHOENIX_API_KEY` supplied by the organizer; it is not your LiteLLM workshop
-key. Save it as a Colab secret named `PHOENIX_API_KEY` or enter it at the hidden prompt.
+Before running the next code cell, open Colab's **Secrets** panel (key icon), add
+`PHOENIX_API_KEY` using the participant board key supplied by the organizer, and enable
+Notebook access. This is separate from `LITELLM_API_KEY`. If you do not add the secret,
+the bootstrap cell will ask for the key privately.
+"""))
+
+nb2_cells.append(md("""## 2. Bootstrap the Notebook 1 agent
+
+Notebook 1's agent has been wrapped in the canonical `utils.py` module. This notebook
+refreshes that file and imports the same `run_agent` code instead of redefining the agent.
+It also loads the ledger into `utils.df`; the local alias `df` below is used only for
+ground-truth comparisons.
 """))
 
 nb2_cells.append(code(f"""import urllib.request
@@ -1279,6 +1287,7 @@ import utils
 utils = importlib.reload(utils)
 
 utils.load_data()
+df = utils.df
 utils.connect()
 SEAT = utils.seat_tag()
 PHOENIX_BOARD_URL = "{PHOENIX_BOARD_URL}"
@@ -1304,7 +1313,7 @@ from utils import NAIVE_SYSTEM_PROMPT, run_agent
 print("bootstrap done | seat tag:", SEAT, "| shared Phoenix project:", PHOENIX_PROJECT)
 """, ("core",)))
 
-nb2_cells.append(md("""## 2. Send traces to the shared Phoenix board
+nb2_cells.append(md("""## 3. Send traces to the shared Phoenix board
 
 Register the shared OTLP collector and authenticate with the board key. The whole room
 uses the `00-Part-2-tracing-set-up` project, which sorts before the gateway project.
@@ -1323,12 +1332,11 @@ print("Shared Phoenix project:", PHOENIX_PROJECT)
 print("Phoenix board:", PHOENIX_BOARD_URL)
 """, ("core",)))
 
-nb2_cells.append(md("""## 3. Instrument LLM calls and attach the agent tracer
+nb2_cells.append(md("""## 4. Why trace the agent?
 
-`OpenAIInstrumentor` creates an LLM span for each OpenAI SDK call. The canonical agent
-adds the surrounding spans: an **AGENT** root, a **CHAIN** for each router call, a nested
-LLM span, then a tool-handling **CHAIN** containing one **TOOL** span per tool execution.
-Inputs, outputs, and tool errors are recorded as span attributes.
+An answer alone does not show how the agent reached it. OpenInference records each model
+call, and the agent adds spans for its router and tools. In Phoenix, follow the trace to see
+what the model asked each tool to do, what came back, and where an error occurred.
 """))
 
 nb2_cells.append(code(r"""from openinference.instrumentation.openai import OpenAIInstrumentor
@@ -1350,7 +1358,7 @@ nb2_cells.append(md("""> **Trace data note:** spans contain prompts and tool inp
 """))
 
 nb2_cells.append(md("""---
-## 4. Challenge 1: signed expenses versus cash flow
+## 5. Challenge 1: signed expenses versus cash flow
 
 Ask the agent for October expenses without explaining that income and refunds are positive
 while expenses are negative. In the trace, inspect the generated pandas code and tool output.
@@ -1420,7 +1428,7 @@ print(f"net expenses:   {truth_gross_expenses - refunds:,.2f}")
 nb2_cells.append(code("show_tool_io(net_october)", ("demo",)))
 
 nb2_cells.append(md("""---
-## 5. Challenge 2: merchant aliases and a decoy
+## 6. Challenge 2: merchant aliases and a decoy
 
 Descriptions use both `STARBUCKS` and the alias `SBUX`. Tully's is another coffee shop,
 not Starbucks. Inspect the tool input and see whether the generated filter handles both cases.
@@ -1444,7 +1452,7 @@ print(f"Tully's decoy rows to exclude:      {tully_decoy_count}")
 nb2_cells.append(code("show_tool_io(starbucks_run)", ("demo",)))
 
 nb2_cells.append(md("""---
-## 6. Challenge 3: what happens when the data has no requested field?
+## 7. Challenge 3: what happens when the data has no requested field?
 
 The ledger has no merchant-location column. Ask for a location breakdown, then inspect the
 schema and tool response rather than assuming what the model will say.

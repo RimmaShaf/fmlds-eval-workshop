@@ -57,8 +57,8 @@ logs / config show) and moves to the next phase.
         │        │
         │        └──> Phoenix board — Fly.io app "fmlds-eval-workshop-phoenix"
         │              server-side trace capture, every request, tagged per seat
-        ▼                (participants' full span trees arrive via notebook 2's
- Instructor: /key/generate via LITELLM_MASTER_KEY → seat_keys.csv →     optional publish cell)
+         ▼                (participants' full span trees export directly from
+  Instructor: /key/generate via LITELLM_MASTER_KEY → seat_keys.csv →     notebook 2)
  view-only Google Sheet → desk cards
 ```
 
@@ -319,9 +319,9 @@ collecting traces from two directions:
    every request — full trace tree (HTTP → auth → LLM call → DB writes), tagged
    with `litellm.metadata.user_api_key_alias` = the seat alias. Zero participant
    setup; this is what the projector shows.
-2. **Client-side (opt-in):** notebook 2's last cell publishes the participant's
-   own instrumented CHAIN/TOOL span tree to project `seat-<tag>` (tag derived
-   from their seat key, no user input).
+2. **Client-side (automatic):** notebook 2 exports the participant's instrumented
+   AGENT/LLM/CHAIN/TOOL spans directly to project `seat-<tag>` (tag derived from
+   their seat key, no user input).
 
 ### Deploy (agent can do all of this)
 
@@ -332,9 +332,9 @@ fly deploy -c infra/phoenix.toml
 curl https://fmlds-eval-workshop-phoenix.fly.dev/healthz     # → "OK"
 ```
 
-⚠️ **Version lockstep:** the room-board Docker image and Notebook 2's local
-Phoenix package are both pinned to **22.0.0**. Keep the image in
-`infra/phoenix.toml` and `PHOENIX_VERSION` in the notebook generator aligned.
+⚠️ **Use the lightweight SDK in notebooks:** Notebook 2 installs the independently
+versioned `arize-phoenix-otel` and `arize-phoenix-client` packages, not a local server.
+The board remains Phoenix **22.0.0**; the SDKs send OTLP/HTTP directly to the board.
 
 ⚠️ **Auth is ON by default** (the Docker image binds a non-loopback host, and
 auth follows the bind address). Everything returns `401 Invalid token` until
@@ -389,9 +389,8 @@ the desk cards as the `PHOENIX_API_KEY` Colab secret.
 1. Fire one pilot-key request through the gateway; within ~10 s the board's
    `gateway` project shows a trace whose spans carry
    `litellm.metadata.user_api_key_alias: "seat-01"`.
-2. Run notebook 2's publish path once (locally or in Colab) with the desk-card
-   `PHOENIX_API_KEY`; the board URL is configured in the notebook. Project
-   `seat-<tag>` appears with the full CHAIN/TOOL tree.
+2. Run notebook 2 with the desk-card `PHOENIX_API_KEY`; project `seat-<tag>`
+   should receive each run's full AGENT/LLM/CHAIN/TOOL trace automatically.
 3. Log into the board UI — see the human task below — and confirm the
    projector view filters by seat alias.
 
@@ -401,14 +400,11 @@ the desk cards as the `PHOENIX_API_KEY` Colab secret.
   and Phoenix prompts you to change it. Choose a real password, store it in
   your password manager — this is the instructor's board UI credential.
 - **Desk cards:** each card carries (a) the key-sheet short URL and (b) the
-  `PHOENIX_API_KEY` for notebook 2's optional publish cell (the participant
-  key from `infra/phoenix_board.key`). The notebook contains the public board URL.
+  `PHOENIX_API_KEY` required by notebook 2 (the participant key from
+  `infra/phoenix_board.key`). The notebook contains the public board URL.
 
-⚠️ **Why the publish cell remaps span ids:** the notebook tracer generates
-*deterministic* ids — every seat running the same cells produces identical
-span ids, and the board enforces global id uniqueness. Without the per-seat
-remap (md5 of seat-tag + old id, parents included), only the first publisher
-in the room would succeed. The remap lives inside notebook 2's publish cell.
+Notebook 2 exports spans directly, so there is no separate publish step or ID
+remapping. The OpenTelemetry SDK generates distinct trace/span IDs for each run.
 
 ---
 
@@ -418,11 +414,9 @@ The only thing that cannot be verified from the repo itself is the real Colab
 experience. Run all three notebooks end-to-end as a participant would.
 
 **Prep (2 min):** a pilot seat key and `PHOENIX_API_KEY` from
-`infra/phoenix_board.key`. The connect cells prompt for
-the seat key — paste it once per notebook (one paste per runtime session).
-Optional zero-paste setup: set the three as Colab secrets (🔑 panel, switch
-**Notebook access** on in each notebook) — notebooks 2–3 read them automatically
-via `utils.get_secret`.
+`infra/phoenix_board.key`. The notebooks prompt for missing keys. For fewer
+prompts, set `LITELLM_API_KEY` and `PHOENIX_API_KEY` as Colab secrets (🔑 panel,
+switch **Notebook access** on in each notebook); `utils.get_secret` reads them.
 
 **Fast structural pass first (optional, 5 min):** set a `WORKSHOP_MODE=mock`
 secret, run all three notebooks top to bottom. Validates badges, bootstrap,
@@ -433,14 +427,11 @@ secret and do the live pass.
       prints `mode=gateway` → deps auto-install → health check OK → data loads
       **2,500 rows from the raw GitHub URL** → compare the agent's answers with
       the signed-amount, fragmented-merchant, and missing-location examples.
-- [ ] **Notebook 2 (10 min, live):** `%pip` installs Phoenix 22.0.0 and
-      OpenInference instrumentation before imports → bootstrap fetches `utils.py`
-      from the repo →
-       `launch_app()` prints a **Colab-proxied URL** → register the local OTLP
-       endpoint and instrument OpenAI calls → traces show an AGENT root, nested
-       router CHAIN/LLM spans, and tool-handling CHAIN/TOOL spans with I/O →
-       compare missing-location and refund-netting runs → optional publish cell
-       sends the spans to board project `seat-<tag>`
+- [ ] **Notebook 2 (10 min, live):** `%pip` installs lightweight Phoenix OTEL,
+      client, and OpenInference packages before imports → bootstrap fetches
+      `utils.py` and the board API key → register the board's OTLP endpoint →
+      missing-location and refund-netting runs appear immediately in project
+      `seat-<tag>` with nested AGENT/CHAIN/LLM/TOOL spans and I/O
 - [ ] **Notebook 3 (15 min, live):** bootstrap → baseline suite (expect the 15
       RPM seat cap to pace it to ~5 min — that's the realistic participant
       experience; for a faster rehearsal use a `--rpm 60` pilot key) →
@@ -454,10 +445,8 @@ secret and do the live pass.
 |---|---|
 | Badge/notebook 404 on GitHub | filename typo in the badge URL — check the three badge links in README |
 | Data load falls back to local / fails | raw.githubusercontent propagation lag — wait 1 min, re-run; verify repo is public |
-| Colab `%pip` reports dependency resolver warnings | pip detected version differences among preinstalled Colab packages; warnings alone do not mean Phoenix failed to install | continue if Phoenix imports and launches; if an import/instrumentation error occurs, restart the runtime and rerun from the top |
-| `launch_app()` URL is localhost or inaccessible in Colab | Colab proxy did not activate | Runtime → Restart, rerun the Phoenix launch cell, and use its printed URL |
-| Publish cell 401 | `PHOENIX_API_KEY` secret missing/typo (the board has auth ON) |
-| Publish "duplicate spans" | you already published from this runtime — expected on re-runs |
+| Colab `%pip` reports dependency resolver warnings | pip detected differences among preinstalled packages; this tracing setup installs lightweight OTEL/client SDKs, not the Phoenix server | continue if the SDK imports; if instrumentation fails, restart the runtime and rerun from the top |
+| Notebook 2 board export returns 401 | `PHOENIX_API_KEY` missing/typo (the board has auth ON) | add the participant key as a Colab secret or enter it at the prompt |
 | 429s during the suite | 15 RPM seat cap doing its job — wait ~30 s and re-run the cell |
 | Notebooks 2/3 still prompt although a Colab secret is set | Colab secrets are **not** environment variables, and "Notebook access" is per-notebook; notebook 1's paste prompt is by design | for the optional zero-paste setup, switch the toggle on for *that* notebook — `utils.get_secret` reads it via `google.colab.userdata` |
 
@@ -506,12 +495,11 @@ In this order:
 | Smoke test: `429 — You have no credits remaining` (wrapped by LiteLLM as `throttling_error`) | OpenAI org has zero API credit — the gateway, seat key, and routing are all working; only the wallet is empty | platform.openai.com → Settings → Billing → Buy credits (~$20). ChatGPT Plus doesn't help: subscriptions include no API usage |
 | Smoke test: auth error on the seat key | key not persisted — Prisma/DB issue | confirm `Prisma DB Connected` in `fly logs`; check Supabase project isn't paused |
 | Fly billing demands tax ID | "Business" account type selected | Individual → field becomes optional |
-| Board returns `401 Invalid token` for everything | Phoenix 22 Docker image enables auth by default (non-loopback bind) | expected — mint a system API key via the `PHOENIX_ADMIN_SECRET` chain (Phase 4b); participants' publish cell sends it as `PHOENIX_API_KEY` |
+| Board returns `401 Invalid token` for everything | Phoenix 22 Docker image enables auth by default (non-loopback bind) | expected — mint a system API key via the `PHOENIX_ADMIN_SECRET` chain (Phase 4b); notebook 2 sends it as `PHOENIX_API_KEY` |
 | `POST /v1/system/api_keys` → 422 "Field required: data" | request body must wrap in a `data` object | `{"data": {"name": "..."}}` |
 | System-key response has no `api_key` field | the response field is `key`, and the value is shown **once** | parse `data.key`; if you lose it, mint a new key (old one can't be retrieved) |
 | `phoenix.client.Client(endpoint=...)` → TypeError | that was the old client; the new one takes `base_url` | `Client(base_url=..., api_key=...)` |
-| Participant publish rejected: "duplicate spans" | notebook tracer ids are deterministic — every seat emits identical ids; board enforces global uniqueness | notebook 2's publish cell remaps ids per seat (already built in) |
-| Local `get_spans` 404 on project X | project not created yet — spans not ingested (or `register()` defaulted to gRPC 4317, which the in-notebook session doesn't serve) | `register(endpoint="http://127.0.0.1:6006/v1/traces", protocol="http/protobuf")` — verified pattern, committed in notebook 2 |
+| Board project has no spans yet | API key/project name is wrong, or the first run has not completed | confirm `PHOENIX_API_KEY`, `seat-<tag>`, and the endpoint `https://fmlds-eval-workshop-phoenix.fly.dev/v1/traces` |
 | Can't find 2FA on Fly | it's per-user | avatar → Account → 2FA |
 
 ## Security invariants (the short version)
@@ -520,7 +508,7 @@ In this order:
 - **Never public:** master key, seat keys, OpenAI key, `DATABASE_URL`, Phoenix
   `PHOENIX_API_KEY`s, `infra/phoenix_board.key` (gitignored via `*.key`).
 - The Phoenix board has **auth enabled** (Phoenix 22 default); every client —
-  the gateway callback and participants' publish cell — authenticates with a
+  the gateway callback and participant notebook — authenticates with a
   system API key. The `PHOENIX_ADMIN_SECRET` used to mint keys is removed from
   the deployment immediately after use.
 - Secrets only ever live in: Fly secrets (gateway + board), env/Colab secrets

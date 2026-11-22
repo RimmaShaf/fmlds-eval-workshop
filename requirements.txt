@@ -1,4 +1,4 @@
-# Workshop participant requirements (Python 3.10+)
+# Workshop participant requirements (Python 3.11+)
 openai>=1.40
 pandas>=2.0
 matplotlib>=3.8

@@ -5,7 +5,7 @@ Regenerate after edits: .venv/bin/python scripts/build_notebooks.py
 The workshop is three notebooks (build -> trace -> evaluate):
 
   01_build_your_agent.ipynb     connect, data, tools, the router loop, the three traps
-  02_tracing_with_phoenix.ipynb OpenTelemetry spans -> local Phoenix -> trace inspection
+  02_tracing_with_phoenix.ipynb OpenTelemetry spans -> shared Phoenix board -> inspection
   03_evaluations.ipynb          golden suite + router checks + regression gate + CI
 
 Design rule (learned from the Arize agent course): ONE CELL = ONE CONCEPT,
@@ -26,7 +26,9 @@ ROOT = Path(__file__).resolve().parents[1]
 REPO = "RimmaShaf/fmlds-eval-workshop"
 RAW = f"https://raw.githubusercontent.com/{REPO}/main"
 COLAB = f"https://colab.research.google.com/github/{REPO}/blob/main"
-PHOENIX_VERSION = "22.0.0"
+PHOENIX_BOARD_URL = "https://fmlds-eval-workshop-phoenix.fly.dev"
+PHOENIX_OTEL_VERSION = "0.17.1"
+PHOENIX_CLIENT_VERSION = "3.7.0"
 OPENINFERENCE_VERSION = "0.1.76"
 
 NB1 = ROOT / "01_build_your_agent.ipynb"
@@ -1217,27 +1219,25 @@ nb2_cells.append(md(f"""{badge("02_tracing_with_phoenix.ipynb")}
 
 ### Instrument the agent with OpenTelemetry and inspect its traces in Phoenix
 
-In notebook 1, you built the agent. Here, the OpenAI instrumentor captures LLM calls
-automatically, while manual spans make the agent and its tool flow visible. You will
-inspect the full trace—including tool inputs and outputs—in Phoenix.
+In notebook 1, you built the agent. Here, OpenInference captures LLM calls automatically,
+manual spans make agent and tool steps visible, and every trace goes directly to the shared
+Phoenix board on Fly.
 
 The workshop's canonical agent remains in `utils.py`; this notebook attaches a tracer to
 that implementation rather than creating a second agent that could drift.
 """))
 
 nb2_cells.append(md("""---
-## 1. Install Phoenix tracing libraries
+## 1. Install the lightweight Phoenix tracing SDKs
 
-The observability stack uses Phoenix's OpenTelemetry registration and OpenInference's
-OpenAI instrumentor. This pins the local Phoenix package to the same version as the
-workshop's Phoenix board.
+Use the OTEL and client SDKs rather than installing a second Phoenix server inside Colab.
+The shared server is already running; these packages only export spans and query them.
 """))
 
-nb2_cells.append(code(f"%pip install -q arize-phoenix=={PHOENIX_VERSION} openinference-instrumentation-openai=={OPENINFERENCE_VERSION}", ("core",)))
+nb2_cells.append(code(f"%pip install -q arize-phoenix-otel=={PHOENIX_OTEL_VERSION} arize-phoenix-client=={PHOENIX_CLIENT_VERSION} openinference-instrumentation-openai=={OPENINFERENCE_VERSION}", ("core",)))
 
-nb2_cells.append(md("""> Colab may report resolver warnings about packages already installed in its runtime.
-> If an import or instrumentation error follows, restart the runtime and rerun from the top.
-> This install runs before the agent and OpenTelemetry imports.
+nb2_cells.append(md("""> Install packages before importing the agent or tracing SDK. If Colab says the
+> runtime needs a restart, restart it now and rerun the notebook from the top.
 """))
 
 nb2_cells.append(md("""---
@@ -1258,31 +1258,33 @@ import utils
 utils.load_data()
 utils.connect()
 SEAT = utils.seat_tag()
+PHOENIX_BOARD_URL = "{PHOENIX_BOARD_URL}"
+PHOENIX_API_KEY = utils.get_secret("PHOENIX_API_KEY")
+if not PHOENIX_API_KEY:
+    from getpass import getpass
+    PHOENIX_API_KEY = getpass("Phoenix board API key: ").strip()
 from utils import NAIVE_SYSTEM_PROMPT, run_agent
 
-print("bootstrap done | seat tag:", SEAT)
+print("bootstrap done | seat tag:", SEAT, "| traces will go to the shared Phoenix board")
 """, ("core",)))
 
-nb2_cells.append(md("""## 2. Start Phoenix and register an OpenTelemetry provider
+nb2_cells.append(md("""## 2. Send traces to the shared Phoenix board
 
-For this workshop, Phoenix runs locally in the notebook runtime. `register` configures
-its trace exporter; the endpoint is the collector URL, not the Phoenix UI URL.
+Register the shared OTLP collector and authenticate with the board key. The project name
+includes your seat tag, so your agent and tool traces are grouped with your seat on Fly.
 """))
 
-nb2_cells.append(code(r"""import phoenix as px
-from phoenix.otel import register
+nb2_cells.append(code(r"""from phoenix.otel import register
 
-session = px.launch_app()
-print("Phoenix UI:", session.url)
-""", ("core",)))
-
-nb2_cells.append(code(r"""tracer_provider = register(
-    project_name=f"workshop-{SEAT}",
-    endpoint="http://127.0.0.1:6006/v1/traces",
+tracer_provider = register(
+    project_name=f"seat-{SEAT}",
+    endpoint=f"{PHOENIX_BOARD_URL}/v1/traces",
     protocol="http/protobuf",
     batch=False,
+    api_key=PHOENIX_API_KEY,
 )
-print("OpenTelemetry collector:", "http://127.0.0.1:6006/v1/traces")
+print("Shared Phoenix project:", f"seat-{SEAT}")
+print("Phoenix board:", PHOENIX_BOARD_URL)
 """, ("core",)))
 
 nb2_cells.append(md("""## 3. Instrument LLM calls and attach the agent tracer
@@ -1323,7 +1325,7 @@ print(missing_location["answer"])
 
 nb2_cells.append(md("""### Read the trace in Phoenix
 
-Open the Phoenix UI and select project `workshop-<SEAT>`. Expand the trace and follow the
+Open the shared Phoenix board and select the `seat-<tag>` project printed in setup. Expand the trace and follow the
 parent-child spans. Find the router's LLM call, the selected tool, and the tool's input
 and output. A failed tool call should be visible in its TOOL span rather than disappearing
 inside a final answer.
@@ -1331,8 +1333,8 @@ inside a final answer.
 
 nb2_cells.append(code(r"""from phoenix.client import Client
 
-phoenix_client = Client()
-spans_df = phoenix_client.spans.get_spans_dataframe(project_identifier=f"workshop-{SEAT}")
+phoenix_client = Client(base_url=PHOENIX_BOARD_URL, api_key=PHOENIX_API_KEY)
+spans_df = phoenix_client.spans.get_spans_dataframe(project_identifier=f"seat-{SEAT}")
 trace_columns = [
     column for column in (
         "name", "span_kind", "parent_id", "status_code",
@@ -1361,59 +1363,17 @@ nb2_cells.append(code(r"""net_expenses = run_agent(
 print(net_expenses["answer"])
 """, ("demo",)))
 
-nb2_cells.append(code(r"""spans_df = phoenix_client.spans.get_spans_dataframe(project_identifier=f"workshop-{SEAT}")
+nb2_cells.append(code(r"""spans_df = phoenix_client.spans.get_spans_dataframe(project_identifier=f"seat-{SEAT}")
 display(spans_df[trace_columns].tail(20))
 """, ("demo",)))
 
 nb2_cells.append(md("""---
-## Optional - Publish traces to the room board
+## All traces go to the shared board
 
-This step is optional. It sends your local spans to the shared Phoenix board.
+There is no separate publish step: the missing-information run, the refund analysis, and
+any additional agent runs in this runtime are sent directly to your `seat-<tag>` project on
+the [shared Phoenix board](https://fmlds-eval-workshop-phoenix.fly.dev).
 """))
-
-nb2_cells.append(md("""First, remap span IDs so traces from different participants do not collide.
-"""))
-
-nb2_cells.append(code(r'''import copy
-import hashlib
-
-def remap_span_ids(spans, seat):
-    """Make span and parent IDs unique to this participant."""
-    remapped = []
-    ids = {}
-    for span in spans:
-        item = copy.deepcopy(span)
-        context = item.get("context") or {}
-        for key in ("trace_id", "span_id"):
-            old = context.get(key)
-            if old:
-                context[key] = ids.setdefault(old, hashlib.md5(f"{seat}:{old}".encode()).hexdigest()[:len(old)])
-        old_parent = item.get("parent_id")
-        if old_parent:
-            item["parent_id"] = ids.setdefault(old_parent, hashlib.md5(f"{seat}:{old_parent}".encode()).hexdigest()[:len(old_parent)])
-        item.pop("id", None)
-        remapped.append(item)
-    return remapped
-''', ("demo",)))
-
-nb2_cells.append(md("""The board URL is fixed for this workshop. Keep its API key in a Colab secret or
-environment variable; the publish cell reads it without exposing it in the notebook.
-"""))
-
-nb2_cells.append(code(r'''from phoenix.client import Client
-
-board_url = "https://fmlds-eval-workshop-phoenix.fly.dev"
-board_key = utils.get_secret("PHOENIX_API_KEY")
-if not board_key:
-    print("Add PHOENIX_API_KEY to your workshop secrets first.")
-else:
-    spans = Client().spans.get_spans(project_identifier=f"workshop-{SEAT}", limit=2000)
-    board = Client(base_url=board_url, api_key=board_key or None)
-    result = board.spans.log_spans(
-        project_identifier=f"seat-{SEAT}", spans=remap_span_ids(spans, SEAT),
-    )
-    print("published:", result)
-''', ("demo",)))
 
 nb2_cells.append(md(f"""---
 ### Continue the workshop

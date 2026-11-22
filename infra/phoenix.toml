@@ -3,13 +3,13 @@
 # Receives traces from two directions:
 #   1. server-side: the LiteLLM gateway's arize_phoenix callback (every request,
 #      tagged per seat key) - see infra/litellm_config.yaml + gateway [env]
-#   2. client-side: notebook 2's optional "publish to the board" cell
-#      (participants' full CHAIN/TOOL span trees, project seat-<tag>)
+#   2. client-side: notebook 2's OpenTelemetry exporter sends agent/LLM/CHAIN/TOOL
+#      spans directly to project seat-<tag> on this board.
 #
 # SQLite on a Fly volume is fine for a 1-day workshop (~30k spans). The
 # version-* image tags run as root, which avoids volume permission issues.
-# Client/server versions are pinned in lockstep: the notebook pip cell installs
-# arize-phoenix==22.0.0. Full runbook: infra/DEPLOYMENT.md.
+# Phoenix server is 22.0.0; the notebook uses separately versioned OTEL/client
+# SDKs and does not install a second Phoenix server. Full runbook: infra/DEPLOYMENT.md.
 
 app = 'fmlds-eval-workshop-phoenix'
 primary_region = 'nrt'

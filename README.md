@@ -20,14 +20,14 @@
 
 1. **Notebook 1 — Build your Agent** — a hand-rolled tool-calling agent (schema lookup, pandas analysis, financial rules, and charting) with a naive one-line system prompt. It demonstrates sign/refund mistakes, merchant aliases, and requests that the available data may not support.
 2. **Notebook 2 — Tracing with Phoenix** — uses OpenTelemetry and OpenInference instrumentation to capture LLM, agent, chain, and tool spans. Every participant sends traces to the shared `00-Part-2-tracing-set-up` project; inspect tool inputs/outputs and compare a missing-information request with a successful analysis.
-3. **Notebook 3 — Evaluations** — runs the 11-case suite and records traces/grades in the separate shared `01-Part-3-evaluations` project, with frozen ground truth, execution/router checks, numeric matches, and an LLM-as-a-judge rubric. Baseline: **10/11**; regression: **6/11**, caught by the CI gate.
+3. **Notebook 3 — Evaluations** — introduces skill and router evals on three golden cases, compares a prompt variant in Phoenix, and guides participants through failure review and golden-case curation. A one-case model comparison is optional; the full 11-case suite stays in CI.
 
 ## Repo map
 
 ```
 01_build_your_agent.ipynb      notebook 1: config, tools, the router loop, the three traps
 02_tracing_with_phoenix.ipynb  notebook 2: OpenTelemetry spans -> shared Phoenix board -> trace inspection
-03_evaluations.ipynb           notebook 3: golden suite, router checks, regression gate, beat-11/11, CI
+03_evaluations.ipynb           notebook 3: skill/router checks, prompt/model experiment, trace review
 utils.py                       canonical agent + eval harness (GENERATED; imported by notebooks 2-3 and CI)
 data/transactions.csv           synthetic ledger, 2,500 rows, May–Oct 2026 (seed 42)
 data/golden_eval_cases.json     11 golden cases + frozen ground truth
@@ -103,7 +103,7 @@ ruff check scripts/ utils.py
 
 `utils.py` and the three `.ipynb` files are **generated artifacts** — never edit them by hand; edit the source fragments in `scripts/build_notebooks.py` and regenerate. The same fragments are both displayed in the notebooks and imported by CI, so notebook and CI can never drift apart.
 
-Expected mock results: baseline **10/11**, regression **6/11** (the failures demonstrate polarity/refund handling, merchant aliases, fabrication, and hallucinated reassurance). To run a live gateway eval, set `LITELLM_API_KEY` and pass `--mode gateway`. Live-model results vary — that is the point of the harness.
+The headless mock CI suite is deterministic: baseline **10/11**, known-bad regression **6/11** (the failures demonstrate polarity/refund handling, merchant aliases, fabrication, and hallucinated reassurance). The short notebook lab uses live calls and only three cases, so its scores can vary. To run the complete live gateway suite, set `LITELLM_API_KEY` and pass `--mode gateway` to `scripts/run_evals.py`.
 
 ## Security notes
 

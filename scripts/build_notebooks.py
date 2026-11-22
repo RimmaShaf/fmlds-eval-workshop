@@ -6,7 +6,7 @@ The workshop is three notebooks (build -> trace -> evaluate):
 
   01_build_your_agent.ipynb     connect, data, tools, the router loop, the three traps
   02_tracing_with_phoenix.ipynb OpenTelemetry spans -> shared Phoenix board -> inspection
-  03_evaluations.ipynb          golden suite + router checks + regression gate + CI
+  03_evaluations.ipynb          skill/router evals + prompt/model experiments + trace review
 
 Design rule (learned from the Arize agent course): ONE CELL = ONE CONCEPT,
 10-25 lines, run it, see one thing. The builder works in micro-fragments:
@@ -459,13 +459,14 @@ F_ROUTER_CHECK = r'''REQUIRED_TOOLS = {
 
 def check_router(case, result):
     """Router eval: did the model actually route to the tool this case requires?"""
-    required = REQUIRED_TOOLS.get(case["id"], [])
+    required = REQUIRED_TOOLS.get(case["id"])
     used = []
     for m in result.get("messages", []):
         if m.get("role") == "assistant":
             for tc in m.get("tool_calls") or []:
                 used.append((tc.get("function") or {}).get("name"))
-    return {"tools_used": ", ".join(dict.fromkeys(used)), "router_ok": all(t in used for t in required)}
+    router_ok = bool(required) and all(tool in used for tool in required)
+    return {"tools_used": ", ".join(dict.fromkeys(used)), "router_ok": router_ok}
 '''
 
 F_CODE_CHECK = r'''import ast
@@ -518,7 +519,10 @@ F_CASE_PASSES = r'''def _case_passes(case, checks):
             checks.get(key, True) for key in ("category_ok", "merchant_ok")
         )
     if ctype == "behavior":
-        return all(checks.get(key) for key in ("answered", "code_valid", "no_traceback", "router_ok", "judge_pass"))
+        required = ("answered", "router_ok", "judge_pass")
+        if checks.get("n_chunks", 0):
+            required += ("code_valid", "no_traceback")
+        return all(checks.get(key) for key in required)
     return all(checks.get(key) for key in ("answered", "router_ok", "judge_pass"))
 '''
 
@@ -562,20 +566,30 @@ import pandas as pd
 SUITE_RESULTS = {}
 
 
-def run_suite(label, system_prompt, temperature, agent_fn=None, judge_fn=None):
-    """Run all golden cases into a scorecard. agent_fn/judge_fn are injectable
-    so the CI mock twin can drive the exact same harness deterministically."""
+def run_suite(label, system_prompt, temperature, agent_fn=None, judge_fn=None,
+              cases=None, model=None):
+    """Run selected golden cases into a scorecard. agent_fn/judge_fn are injectable
+    so the CI mock twin can drive the exact same harness deterministically.
+    Notebook experiments may pass a small case subset and/or model override."""
     agent_fn = agent_fn or run_agent
     judge_fn = judge_fn or judge_case
     rows = []
     SUITE_RESULTS[label] = {}
-    for case in GOLDEN["cases"]:
+    selected_cases = GOLDEN["cases"] if cases is None else cases
+    for case in selected_cases:
         t0 = time.time()
-        result = agent_fn(case["query"], system_prompt=system_prompt, temperature=temperature, label=f"{label}/{case['id']}")
+        run_kwargs = {
+            "system_prompt": system_prompt,
+            "temperature": temperature,
+            "label": f"{label}/{case['id']}",
+        }
+        if model is not None:
+            run_kwargs["model"] = model
+        result = agent_fn(case["query"], **run_kwargs)
         SUITE_RESULTS[label][case["id"]] = result
         checks = {"answered": bool(result["answer"].strip())}
         checks.update(check_router(case, result))
-        if case["type"] in ("numeric", "behavior"):
+        if case["type"] == "numeric" or (case["type"] == "behavior" and result.get("executed_code")):
             checks.update(check_code(result))
         if case["type"] == "numeric":
             checks.update(check_numeric(case, result))
@@ -1498,41 +1512,38 @@ nb3_cells = []
 
 nb3_cells.append(md(f"""{badge("03_evaluations.ipynb")}
 
-# Test and Grade the Agent
+# Evaluate, Experiment, Improve
 
-Turn the failures from notebooks 1–2 into an 11-question golden suite with ground truth
-computed from the same seed as the dataset.
+Notebook 2 made the agent's behavior visible. Now we will evaluate a few important skills,
+inspect failures in Phoenix, and test a prompt change against the same examples.
 
-Four families of checks, mirroring real production eval stacks:
+**Learning path:** run a small baseline → inspect router and skill scores → change one prompt
+→ compare the same cases → review a failure → decide whether it belongs in the golden dataset.
 
-| family | checks | catches |
-|---|---|---|
-| **Execution** | generated code parses (AST), runs without traceback | syntax garbage, retry storms, hallucinated columns |
-| **Router** | the model actually called the tool this case requires | mis-routing, skipping the schema check, "answering from vibes" |
-| **Ground truth** | `abs(agent - expected) < 0.01` on the FINAL ANSWER number | sign inversion, fragmentation, wrong filters |
-| **LLM-as-a-judge** | 1-5 rubric on actionability / heuristic adherence / numerical fidelity | plausible-sounding nonsense, fabricated balances |
-
-The checks fail closed: missing output or a crashed tool means FAIL.
+The short lab uses three cases to keep live calls manageable. The complete 11-case suite stays
+in the shared harness and CI.
 """))
 
 nb3_cells.append(md("""---
-## 1. Install the Phoenix tracing SDKs
+## 1. Install the workshop and Phoenix client packages
 
-Notebook 3 sends evaluation-run traces to its own shared Phoenix project,
-`01-Part-3-evaluations`.
+This mirrors Notebook 2's Phoenix setup. The board is hosted; this installs only the client
+and tracing SDKs, not a second Phoenix server. The base packages let this notebook run on its
+own Colab runtime too.
 """))
 
-nb3_cells.append(code(f"%pip install -q arize-phoenix-otel=={PHOENIX_OTEL_VERSION} arize-phoenix-client=={PHOENIX_CLIENT_VERSION} openinference-instrumentation-openai=={OPENINFERENCE_VERSION}", ("core",)))
+nb3_cells.append(code(f'''%pip install -q "openai>=1.40" "pandas>=2.0" "matplotlib>=3.8" arize-phoenix-otel=={PHOENIX_OTEL_VERSION} arize-phoenix-client=={PHOENIX_CLIENT_VERSION} openinference-instrumentation-openai=={OPENINFERENCE_VERSION}''', ("core",)))
 
 nb3_cells.append(md("""> Install before importing the agent or tracing SDK. If Colab says the runtime
 > needs a restart, restart it and rerun the notebook from the top.
 """))
 
 nb3_cells.append(md("""---
-## Bootstrap
+## 2. Load the same agent and credentials as Notebook 2
 
-Load the agent and golden suite, connect to the workshop gateway, and verify the separate
-participant `PHOENIX_API_KEY` supplied by the organizer. It is not the LiteLLM workshop key.
+Notebook 3 imports the canonical agent from `utils.py`, loads the frozen golden cases, and
+uses the same gateway and seat key as Notebook 2. The Phoenix board key is separate from the
+workshop model key.
 """))
 
 nb3_cells.append(code(f'''import urllib.request
@@ -1541,7 +1552,12 @@ import importlib
 from pathlib import Path
 
 utils_path = Path("utils.py")
-if not utils_path.exists() or "def set_span_tracer(tracer, attributes=None):" not in utils_path.read_text():
+required_utils = (
+    "def set_span_tracer(tracer, attributes=None):",
+    "def load_golden():",
+    "def run_suite(label, system_prompt, temperature, agent_fn=None, judge_fn=None,",
+)
+if not utils_path.exists() or any(marker not in utils_path.read_text() for marker in required_utils):
     urllib.request.urlretrieve("{RAW}/utils.py", "utils.py")
 
 import utils
@@ -1570,21 +1586,22 @@ except Exception as exc:
     phoenix_client = Client(base_url=PHOENIX_BOARD_URL, api_key=PHOENIX_API_KEY)
     phoenix_client.projects.list()
 
-from utils import (CREATIVE_SYSTEM_PROMPT, HARDENED_SYSTEM_PROMPT, JUDGE_MODEL, GOLDEN,
-                   MAX_TOKENS, client, df, run_agent, waterfall)
+from utils import (
+    AGENT_MODEL, CREATIVE_SYSTEM_PROMPT, HARDENED_SYSTEM_PROMPT, GOLDEN,
+    SUITE_RESULTS, check_code, check_numeric, check_router, run_agent, run_suite,
+)
 
-print("bootstrap done |", len(GOLDEN["cases"]), "golden cases loaded")
+print("bootstrap done |", len(GOLDEN["cases"]), "golden cases | seat:", SEAT)
 ''', ("core",)))
 
-nb3_cells.append(md("""## 2. Send evaluation traces to their shared project
+nb3_cells.append(md("""## 3. Send this notebook's traces to Phoenix
 
-Evaluation runs use a separate project from Notebook 2, while all workshop participants
-share the same project here.
+As in Notebook 2, the OTLP exporter writes directly to the shared board. Notebook 3 uses
+`01-Part-3-evaluations`, separate from Notebook 2's trace-review project. The stable
+`session.id` identifies your seat; unique run labels distinguish experiment variants.
 """))
 
 nb3_cells.append(code(r"""from phoenix.otel import register
-from openinference.instrumentation.openai import OpenAIInstrumentor
-from openinference.semconv.trace import SpanAttributes
 
 tracer_provider = register(
     project_name=PHOENIX_EVAL_PROJECT,
@@ -1593,6 +1610,13 @@ tracer_provider = register(
     batch=False,
     api_key=PHOENIX_API_KEY,
 )
+print("Phoenix project:", PHOENIX_EVAL_PROJECT)
+print("Phoenix board:", PHOENIX_BOARD_URL)
+""", ("core",)))
+
+nb3_cells.append(code(r"""from openinference.instrumentation.openai import OpenAIInstrumentor
+from openinference.semconv.trace import SpanAttributes
+
 openai_instrumentor = OpenAIInstrumentor()
 if openai_instrumentor.is_instrumented_by_opentelemetry:
     openai_instrumentor.uninstrument()
@@ -1601,166 +1625,169 @@ utils.set_span_tracer(
     tracer_provider.get_tracer(__name__),
     attributes={SpanAttributes.SESSION_ID: SEAT},
 )
-print("Phoenix project:", PHOENIX_EVAL_PROJECT)
+print("OpenAI and agent spans are instrumented")
 """, ("core",)))
 
 nb3_cells.append(md("""---
-## The harness
+## 4. Run a small baseline
 
-Each check reads a run result. Numeric answers use the `FINAL ANSWER: <number>` convention
-so they can be compared with ground truth.
+An evaluation is a repeatable question, expected behavior, and evaluator. We will start with
+three examples from the frozen golden dataset: signed expenses, merchant aliases, and a
+missing schema field. The same checks and examples will be used for every variant.
 """))
 
-nb3_cells.append(code(F_EXTRACT, ("core",)))
+nb3_cells.append(code(r'''from IPython.display import display
 
-nb3_cells.append(md("""### Check the router
+STARTER_IDS = ["total_expenses_october", "starbucks_total", "merchant_location"]
+STARTER_CASES = [case for case in GOLDEN["cases"] if case["id"] in STARTER_IDS]
+if len(STARTER_CASES) != len(STARTER_IDS):
+    raise ValueError("Starter cases are missing from the golden dataset")
 
-This function checks whether the agent called the tool required for each case.
-"""))
-nb3_cells.append(code(F_ROUTER_CHECK, ("core",)))
+import datetime as _datetime
+RUN_TAG = _datetime.datetime.now(_datetime.timezone.utc).strftime("lab3-%Y%m%d-%H%M%S-%f")
+BASELINE_LABEL = f"{RUN_TAG}/prompt-baseline"
 
-nb3_cells.append(md("""### Check code execution
-
-Each code call should parse and run successfully.
-"""))
-nb3_cells.append(code(F_CODE_CHECK, ("core",)))
-
-nb3_cells.append(md("""### Check merchant names
-
-Reduce a merchant name to a word we can look for in the answer.
-"""))
-nb3_cells.append(code(F_MERCHANT_TOKEN, ("core",)))
-
-nb3_cells.append(md("""### Check numeric answers
-
-Compare the extracted final number with the computed ground truth.
-"""))
-nb3_cells.append(code(F_NUMERIC_CHECK, ("core",)))
-
-nb3_cells.append(md("""### Decide whether a case passes
-
-Require every check for that case type; missing checks do not pass.
-"""))
-nb3_cells.append(code(F_CASE_PASSES, ("core",)))
-
-nb3_cells.append(md("""### Prepare the judge prompt
-
-The judge compares advisory answers with the same case ground truth.
-"""))
-nb3_cells.append(code(F_JUDGE_PROMPT, ("core",)))
-
-nb3_cells.append(md("""Parse the judge response as JSON. If it is not valid JSON, the case fails.
-"""))
-nb3_cells.append(code(F_PARSE_JSON, ("core",)))
-
-nb3_cells.append(md("""Send the answer, expected result, and rubric to the judge.
-"""))
-nb3_cells.append(code(F_JUDGE_CASE, ("core",)))
-
-nb3_cells.append(md("""`run_suite` runs every golden case and combines its checks into one scorecard.
-"""))
-nb3_cells.append(code(F_SUITE, ("core",)))
-
-nb3_cells.append(md("""### Step 1 - Baseline: the hardened agent
-
-Same tools, same model - but now the system prompt encodes the lessons from notebook 1
-(schema-first, signed amounts, fuzzy merchant matching, `FINAL ANSWER` discipline). Run
-the suite:
-"""))
-
-nb3_cells.append(code(r'''baseline_scorecard = run_suite("baseline", HARDENED_SYSTEM_PROMPT, 0.0)
-cols = ["case", "type", "trap", "router_ok", "tools_used", "answered", "code_valid",
-        "no_traceback", "numeric_ok", "extracted", "judge_pass", "PASS", "latency_s"]
-baseline_scorecard[[c for c in cols if c in baseline_scorecard.columns]]
-''', ("demo",)))
-
-nb3_cells.append(code(r'''baseline_failed = [row["case"] for row in baseline_scorecard.to_dict(orient="records") if not row["PASS"]]
-print("baseline failures:", baseline_failed or "none")
-for cid in baseline_failed:
-    res = SUITE_RESULTS["baseline"][cid]
-    print(f"\n--- {cid} ---")
-    print(res["answer"][:400])
-    waterfall(res, max_events=12)
-''', ("demo",)))
-
-nb3_cells.append(md("""### Step 2 - The regression injection
-
-A stakeholder drops by: *"the agent feels robotic - make it more **creative and
-conversational**, loosen it up a bit."* Sounds harmless. It is the most common way eval
-suites start earning their keep. Apply the "improvement": a friendlier persona, freedom
-to estimate and round, and `temperature=0.7` for extra sparkle.
-"""))
-
-nb3_cells.append(code(r'''regression_scorecard = run_suite("regression", CREATIVE_SYSTEM_PROMPT, 0.7)
-regression_scorecard[[c for c in cols if c in regression_scorecard.columns]]
-''', ("demo",)))
-
-nb3_cells.append(md("""### Step 3 - The diff: what broke, and how the suite caught it
-"""))
-
-nb3_cells.append(code(r'''merged = baseline_scorecard[["case", "PASS"]].merge(
-    regression_scorecard[["case", "PASS"]], on="case", suffixes=("_baseline", "_creative")
+baseline = run_suite(
+    BASELINE_LABEL,
+    HARDENED_SYSTEM_PROMPT,
+    temperature=0.0,
+    cases=STARTER_CASES,
 )
-merged["regressed?"] = merged["PASS_baseline"] & ~merged["PASS_creative"]
-
-b = int(baseline_scorecard["PASS"].sum())
-r = int(regression_scorecard["PASS"].sum())
-total_cases = len(GOLDEN["cases"])
-print(f"baseline   : {b}/{total_cases}")
-print(f"regression : {r}/{total_cases}")
-print(f"verdict    : REGRESSION DETECTED - {int(merged['regressed?'].sum())} case(s) broke" if r < b else "no regression detected")
-merged
+display(baseline[[c for c in ("case", "router_ok", "tools_used", "numeric_ok", "judge_pass", "PASS") if c in baseline]])
 ''', ("demo",)))
 
-nb3_cells.append(code(r'''regressed_cases = merged.loc[merged["regressed?"], "case"].tolist()
-if regressed_cases:
-    cid = regressed_cases[0]
-    res = SUITE_RESULTS["regression"][cid]
-    print(f"=== autopsy of the first regressed case: {cid} ===\n")
-    print("agent answer:\n", res["answer"][:400])
-    print("\nexecuted code:")
-    for c in res["executed_code"]:
-        print(" ", c["code"][:120].replace("\n", " | "), "-> ok:", c["ok"])
-    waterfall(res, max_events=15)
-else:
-    print("nothing regressed - the creative prompt happened to survive. Re-run: stochastic regressions are exactly why we automate this.")
-''', ("demo",)))
+nb3_cells.append(md("""### What are the evaluators checking?
 
-nb3_cells.append(md("""### The router column, specifically
-
-Look at `router_ok` / `tools_used` above: the regression didn't just make answers wrong -
-it changed **routing behavior** (skipping `fetch_data_schema`, answering advisory
-questions without consulting `financial_rules_lookup`). Routing is a capability with its
-own check because "the model picked the wrong tool" is a distinct production failure
-from "the model computed the wrong number".
-
-### Your turn: beat the baseline (optional, costs ~11 live calls)
-
-The suite is not just a gate - it is a *workbench*. Copy the hardened prompt, change it,
-and see whether you can reach 11/11 without losing the conversational quality the
-stakeholder wanted.
+The **router eval** checks whether the agent called the expected tool. The **skill evals**
+check whether generated code ran and whether a numeric answer matched frozen ground truth;
+the missing-location case uses a judge for honesty and usefulness. These are separate signals:
+a correct tool choice does not guarantee a correct answer.
 """))
 
-nb3_cells.append(code(r'''MY_SYSTEM_PROMPT = HARDENED_SYSTEM_PROMPT + """
-
-8. When delivering bad news (overspending, insufficient savings), lead with the concrete number,
-   then one actionable step. Warm tone is fine; vague reassurance is not."""
-
-mine_scorecard = run_suite("mine", MY_SYSTEM_PROMPT, 0.0)
-print(f"baseline: {int(baseline_scorecard['PASS'].sum())}/{len(GOLDEN['cases'])}   yours: {int(mine_scorecard['PASS'].sum())}/{len(GOLDEN['cases'])}")
+nb3_cells.append(code(r'''example_case = next(c for c in STARTER_CASES if c["id"] == "total_expenses_october")
+example_result = SUITE_RESULTS[BASELINE_LABEL][example_case["id"]]
+print("router eval:", check_router(example_case, example_result))
+print("skill evals:", {**check_code(example_result), **check_numeric(example_case, example_result)})
 ''', ("demo",)))
 
 nb3_cells.append(md("""---
-## Attach eval results to the Part 3 traces
+## 5. Run a prompt experiment
 
-The baseline runs were sent to the shared `01-Part-3-evaluations` project. This cell adds
-their pass/fail verdicts to the matching agent spans for review in Phoenix.
+An experiment changes one thing and holds the rest fixed: **same questions, model,
+temperature, and evaluators**. The variant below intentionally relaxes tool-use and
+precision guidance. Run it, compare the scores, then inspect the corresponding traces.
+
+This lab uses Phoenix traces and evaluation annotations to review the variants. It does not
+create a separate Phoenix Dataset/Experiment object; this lightweight experiment keeps the
+Notebook 2 client setup unchanged. The SDK-managed dataset workflow can be an advanced follow-up.
 """))
 
-nb3_cells.append(code(r'''import pandas as _pd
+nb3_cells.append(code(r'''CANDIDATE_SYSTEM_PROMPT = CREATIVE_SYSTEM_PROMPT
+CANDIDATE_LABEL = f"{RUN_TAG}/prompt-candidate"
+print("Candidate system prompt:\n", CANDIDATE_SYSTEM_PROMPT)
 
+candidate = run_suite(
+    CANDIDATE_LABEL,
+    CANDIDATE_SYSTEM_PROMPT,
+    temperature=0.0,  # held fixed to isolate the prompt change
+    cases=STARTER_CASES,
+)
+display(candidate[[c for c in ("case", "router_ok", "tools_used", "numeric_ok", "judge_pass", "PASS") if c in candidate]])
+''', ("demo",)))
+
+nb3_cells.append(code(r'''comparison = baseline[["case", "PASS", "router_ok"]].merge(
+    candidate[["case", "PASS", "router_ok"]], on="case", suffixes=("_baseline", "_candidate")
+)
+comparison["regressed"] = comparison["PASS_baseline"] & ~comparison["PASS_candidate"]
+print(f"baseline: {int(baseline['PASS'].sum())}/{len(baseline)}")
+print(f"candidate: {int(candidate['PASS'].sum())}/{len(candidate)}")
+comparison
+''', ("demo",)))
+
+nb3_cells.append(md("""### Optional: compare two router models instead
+
+Keep the hardened prompt and the same case fixed, then change only the router model. The
+workshop gateway is configured for `gpt-4o-mini` and `gpt-4o`; the larger model may use more
+of your seat's budget. This agent also makes a separate code-generation call inside its data
+tool; that inner call stays on `gpt-4o-mini`, so this is a router-model comparison, not a
+whole-agent model comparison. It uses one numeric case to keep the optional exercise short.
+Check the gateway's currently enabled model aliases before changing these names.
+"""))
+
+nb3_cells.append(code(r'''MODEL_CASES = [next(c for c in GOLDEN["cases"] if c["id"] == "total_expenses_october")]
+MODEL_A = AGENT_MODEL
+MODEL_B = "gpt-4o"
+model_a_label = f"{RUN_TAG}/model-{MODEL_A}"
+model_b_label = f"{RUN_TAG}/model-{MODEL_B}"
+
+model_a = run_suite(model_a_label, HARDENED_SYSTEM_PROMPT, 0.0, cases=MODEL_CASES, model=MODEL_A)
+model_b = run_suite(model_b_label, HARDENED_SYSTEM_PROMPT, 0.0, cases=MODEL_CASES, model=MODEL_B)
+display(model_a[["case", "PASS", "latency_s"]].merge(
+    model_b[["case", "PASS", "latency_s"]], on="case", suffixes=(f"_{MODEL_A}", f"_{MODEL_B}")
+))
+''', ("demo",)))
+
+nb3_cells.append(md("""---
+## 6. Inspect and label a failure in Phoenix
+
+Open the shared board, select `01-Part-3-evaluations`, and filter to your `session.id` and
+the run-label prefix shown below. Open a failed candidate trace (or a baseline failure if the
+candidate happens to pass). Compare the user question, router decision, tool input/output,
+generated code, and final answer. Which component failed?
+
+If the board's annotation UI is enabled for participants, add a **human** failure label and a
+short evidence-based note. Otherwise, record the same note in the next cell. Do not classify a
+case as a model failure until you've checked that the evaluator and expected answer are sound.
+"""))
+
+nb3_cells.append(code(r'''print("Board:", PHOENIX_BOARD_URL)
+print("Project:", PHOENIX_EVAL_PROJECT)
+print("Seat filter (session.id):", SEAT)
+failed_candidate_ids = candidate.loc[~candidate["PASS"], "case"].tolist()
+review_ids = failed_candidate_ids or baseline.loc[~baseline["PASS"], "case"].tolist()
+REVIEW_LABEL = CANDIDATE_LABEL if failed_candidate_ids else BASELINE_LABEL
+print("Trace-name prefix:", REVIEW_LABEL + "/")
+print("Candidate failures:", failed_candidate_ids or "none this run")
+print("Review these case(s):", review_ids or "no failed cases; inspect any trace and challenge the evaluator")
+''', ("demo",)))
+
+nb3_cells.append(code(r'''# Complete this after inspecting the trace. Keep the evidence concise and reproducible.
+failure_note = {
+    "run_label": REVIEW_LABEL,
+    "case_id": "replace-with-failed-case-id",
+    "failure_type": "router | skill | data | evaluator | prompt",
+    "trace_evidence": "Which span/input/output shows the failure?",
+    "expected_behavior": "What should the agent have done?",
+    "reproducible": "yes | no | not_checked",
+}
+failure_note
+''', ("demo",)))
+
+nb3_cells.append(md("""---
+## 7. Promote a reviewed failure to the golden dataset
+
+Only promote a case when the failure is reproducible, the expected behavior is clear, and
+ground truth can be independently checked. Capture at least: a unique `id`, the exact user
+`query`, case `type`, expected behavior/value, tolerance (for numeric cases), and the rule for
+computing ground truth.
+
+For this repository, golden cases are generated by `scripts/generate_dataset.py`; don't edit
+the JSON by hand. Add the case to `build_cases()` and compute its expected value from the
+synthetic data, then regenerate and verify with `python scripts/generate_dataset.py --check`.
+The notebook note above is a review candidate, not an automatic dataset change.
+"""))
+
+nb3_cells.append(md("""## Attach evaluator scores to the experiment traces
+
+This adds code-eval annotations to traces using unique run labels, so repeated notebook runs
+do not accidentally attach scores to an earlier trace. Human review remains a separate label.
+"""))
+
+nb3_cells.append(code(r'''import pandas as pd
+
+scorecards = [(BASELINE_LABEL, baseline), (CANDIDATE_LABEL, candidate)]
 spans = phoenix_client.spans.get_spans(project_identifier=PHOENIX_EVAL_PROJECT, limit=2000)
-by_name = {}
+span_ids = {}
 for span in spans:
     attributes = span.get("attributes") or {}
     if attributes.get("session.id") != SEAT:
@@ -1768,65 +1795,43 @@ for span in spans:
     span_name = span.get("name")
     span_id = (span.get("context") or {}).get("span_id")
     if span_name and span_id:
-        by_name[span_name] = span_id
+        span_ids[span_name] = span_id
 
-ann_rows = []
-for row in baseline_scorecard.to_dict(orient="records"):
-    span_id = by_name.get(f"baseline/{row['case']}")
-    if span_id:
-        ann_rows.append({"span_id": span_id, "label": "PASS" if row["PASS"] else "FAIL",
-                         "score": float(bool(row["PASS"])), "explanation": row.get("answer_preview", "")[:100]})
-if ann_rows:
+annotations = []
+for label, scorecard in scorecards:
+    for row in scorecard.to_dict(orient="records"):
+        span_id = span_ids.get(f"{label}/{row['case']}")
+        if span_id:
+            annotations.append({
+                "span_id": span_id,
+                "label": "PASS" if row["PASS"] else "FAIL",
+                "score": float(bool(row["PASS"])),
+                "explanation": f"{label}: router={row.get('router_ok')}; numeric={row.get('numeric_ok')}",
+            })
+
+if annotations:
     phoenix_client.spans.log_span_annotations_dataframe(
-        dataframe=_pd.DataFrame(ann_rows), annotation_name="Golden Suite", annotator_kind="CODE",
+        dataframe=pd.DataFrame(annotations),
+        annotation_name="Workshop golden checks",
+        annotator_kind="CODE",
     )
-    print(f"annotated {len(ann_rows)} spans in {PHOENIX_EVAL_PROJECT}")
+    print(f"Logged {len(annotations)} evaluator annotations")
 else:
-    print("no matching Part 3 spans found yet - re-run the baseline suite and try again")
+    print("No matching spans found yet; rerun this cell after the traces arrive")
 ''', ("demo",)))
 
 nb3_cells.append(md("""---
-## Production Governance & CI/CD
+## Takeaways
 
-The same suite, wired into GitHub Actions (`.github/workflows/evals.yml` in the repo):
+- Router, execution, answer-quality, and ground-truth checks catch different failures.
+- A prompt or model change is an experiment only when you compare it on the same cases with
+  the same evaluators and hold other variables fixed.
+- Phoenix traces help explain *why* a score changed; human review decides whether a failure
+  is real and worth adding to the golden set.
+- The complete golden suite and regression gate remain in `scripts/run_evals.py` and CI.
 
-```yaml
-name: evals
-on: [push, pull_request]
-jobs:
-  golden-suite:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - run: pip install -r requirements.txt
-      - run: python scripts/generate_dataset.py --check
-      - run: python scripts/run_evals.py --mode mock --config baseline --min-pass-rate 0.9
-      - run: python scripts/run_evals.py --mode mock --config regression --expect-regression
-```
-
-What each line defends:
-- `generate_dataset.py --check` - **data drift**: the CSV and frozen ground truths must stay consistent with the seed
-- `run_evals.py --config baseline` - **capability regression**: the agent must clear the golden suite
-- `--expect-regression` - **the gate itself is tested**: the harness must catch a known-bad configuration (a deterministic mock run, zero API cost)
-
-`scripts/run_evals.py` drives the *same* `utils.py` harness these notebooks use, with a
-deterministic mock agent injected - notebook and CI can never drift apart. Push/PR checks
-cost nothing; the scheduled live check runs through the workshop gateway with a
-`LITELLM_API_KEY` GitHub secret.
-
-**Golden dataset hygiene, briefly:** regenerate ground truth from code, never edit JSON
-by hand; version the seed; add a case the moment a new failure mode reaches production;
-delete cases that no longer map to a real capability.
-
-**Discussion starters for Q&A:**
-- Which of your current LLM features have *any* automated eval today?
-- What would your first 10 golden cases be - and who signs off on the ground truth?
-- Where does the eval gate belong: pre-merge, nightly, or both?
-
-*Thank you - and may all your regressions be caught by robots, not users.*
+For a full-cost run of all 11 cases, use the harness outside the short training path or during
+an instructor-led extension.
 """))
 
 nb3_cells.append(md(f"""---

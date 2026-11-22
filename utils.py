@@ -483,13 +483,14 @@ REQUIRED_TOOLS = {
 
 def check_router(case, result):
     """Router eval: did the model actually route to the tool this case requires?"""
-    required = REQUIRED_TOOLS.get(case["id"], [])
+    required = REQUIRED_TOOLS.get(case["id"])
     used = []
     for m in result.get("messages", []):
         if m.get("role") == "assistant":
             for tc in m.get("tool_calls") or []:
                 used.append((tc.get("function") or {}).get("name"))
-    return {"tools_used": ", ".join(dict.fromkeys(used)), "router_ok": all(t in used for t in required)}
+    router_ok = bool(required) and all(tool in used for tool in required)
+    return {"tools_used": ", ".join(dict.fromkeys(used)), "router_ok": router_ok}
 
 
 
@@ -546,7 +547,10 @@ def _case_passes(case, checks):
             checks.get(key, True) for key in ("category_ok", "merchant_ok")
         )
     if ctype == "behavior":
-        return all(checks.get(key) for key in ("answered", "code_valid", "no_traceback", "router_ok", "judge_pass"))
+        required = ("answered", "router_ok", "judge_pass")
+        if checks.get("n_chunks", 0):
+            required += ("code_valid", "no_traceback")
+        return all(checks.get(key) for key in required)
     return all(checks.get(key) for key in ("answered", "router_ok", "judge_pass"))
 
 
@@ -594,20 +598,30 @@ import pandas as pd
 SUITE_RESULTS = {}
 
 
-def run_suite(label, system_prompt, temperature, agent_fn=None, judge_fn=None):
-    """Run all golden cases into a scorecard. agent_fn/judge_fn are injectable
-    so the CI mock twin can drive the exact same harness deterministically."""
+def run_suite(label, system_prompt, temperature, agent_fn=None, judge_fn=None,
+              cases=None, model=None):
+    """Run selected golden cases into a scorecard. agent_fn/judge_fn are injectable
+    so the CI mock twin can drive the exact same harness deterministically.
+    Notebook experiments may pass a small case subset and/or model override."""
     agent_fn = agent_fn or run_agent
     judge_fn = judge_fn or judge_case
     rows = []
     SUITE_RESULTS[label] = {}
-    for case in GOLDEN["cases"]:
+    selected_cases = GOLDEN["cases"] if cases is None else cases
+    for case in selected_cases:
         t0 = time.time()
-        result = agent_fn(case["query"], system_prompt=system_prompt, temperature=temperature, label=f"{label}/{case['id']}")
+        run_kwargs = {
+            "system_prompt": system_prompt,
+            "temperature": temperature,
+            "label": f"{label}/{case['id']}",
+        }
+        if model is not None:
+            run_kwargs["model"] = model
+        result = agent_fn(case["query"], **run_kwargs)
         SUITE_RESULTS[label][case["id"]] = result
         checks = {"answered": bool(result["answer"].strip())}
         checks.update(check_router(case, result))
-        if case["type"] in ("numeric", "behavior"):
+        if case["type"] == "numeric" or (case["type"] == "behavior" and result.get("executed_code")):
             checks.update(check_code(result))
         if case["type"] == "numeric":
             checks.update(check_numeric(case, result))

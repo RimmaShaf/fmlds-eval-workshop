@@ -392,8 +392,9 @@ it on the desk cards.
    `litellm.metadata.user_api_key_alias: "seat-01"`.
 2. Run notebook 2 with the desk-card `PHOENIX_API_KEY`; traces should appear in
    `00-Part-2-tracing-set-up`.
-3. Run notebook 3's baseline suite; traces and grades should appear in
-   `01-Part-3-evaluations`. Confirm the LiteLLM gateway traces remain in `gateway`.
+3. Run Notebook 3's three-case baseline and prompt variant; traces and evaluator
+   annotations should appear in `01-Part-3-evaluations`. Confirm the LiteLLM gateway
+   traces remain in `gateway`.
 4. Log into the board UI and confirm the projector can select each of the three projects.
 
 ### Human tasks for this phase
@@ -434,15 +435,12 @@ secret and do the live pass.
       `utils.py` and the board API key → register the board's OTLP endpoint →
       missing-location and refund-netting runs appear immediately in project
       `00-Part-2-tracing-set-up` with nested AGENT/CHAIN/LLM/TOOL spans and I/O
-- [ ] **Notebook 3:** run the baseline suite → traces and grade annotations appear
-      in `01-Part-3-evaluations`, separate from Part 2 and the gateway project.
-- [ ] **Notebook 3 (15 min, live):** bootstrap → baseline suite (expect the 15
-      RPM seat cap to pace it to ~5 min — that's the realistic participant
-      experience; for a faster rehearsal use a `--rpm 60` pilot key) →
-      baseline ≈ 10/11 (live variance: 9–11 is normal, judges are stochastic —
-      if it dips below the 0.9 gate, re-run once before debugging) →
-      regression 6/11-ish → diff cell prints `REGRESSION DETECTED` →
-      `router_ok` column shows the mis-routing → optional: beat-11/11
+- [ ] **Notebook 3 (10–15 min, live):** bootstrap → three-case baseline → inspect
+      router/skill score columns → run the prompt variant on the same cases → compare
+      scores and review a candidate failure in Phoenix. The prompt experiment is live
+      and stochastic; do not require a specific pass count. The optional model comparison
+      makes two runs on one numeric case. Use `scripts/run_evals.py` for the full 11-case
+      suite and its deterministic mock regression check.
 
 **If something breaks, likely causes:**
 | Symptom | Fix |

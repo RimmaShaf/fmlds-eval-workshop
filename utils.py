@@ -134,6 +134,11 @@ Use the existing DataFrame df. Print the final result.
 Columns: {columns}
 Sample rows: {sample}
 Question: {question}
+For entity filters such as merchants or products, do not assume the query's exact wording
+is exhaustive. Before aggregating, use the full df (not only the sample rows above) to
+inspect likely aliases, abbreviations, spelling/format variants, and plausible decoys.
+Summarize the evidence with counts and a few examples; do not print or return the full dataset.
+If candidates remain ambiguous, say so instead of silently guessing.
 Return Python code only. Do not import libraries."""
 
 

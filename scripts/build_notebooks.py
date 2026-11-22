@@ -1483,9 +1483,13 @@ nb2_cells.append(md(f"""---
 
 1. Open the [shared Phoenix board]({PHOENIX_BOARD_URL}).
 2. Select project **`{PHOENIX_PROJECT}`**.
-3. Search/filter spans by the **`session.id`** value printed during setup to isolate your
-   runs from the rest of the room.
-4. Expand an AGENT span to follow its nested router, LLM, tool, and tool-generated LLM spans.
+3. Open the **Traces** table and enter this Phoenix filter expression, replacing
+   `your-session-id` with the `session.id` printed during setup:
+
+   `attributes['session.id'] == 'your-session-id'`
+
+4. Open a matching trace and expand its AGENT root to follow the nested router, LLM, tool,
+   and tool-generated LLM spans. See [Phoenix filter expressions](https://arize.com/docs/phoenix/tracing/how-to-tracing/filter-expressions).
 
 The code below fetches your own trace spans into `my_spans` so you can inspect them in pandas.
 """))

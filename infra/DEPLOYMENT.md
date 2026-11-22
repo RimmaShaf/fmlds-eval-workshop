@@ -332,11 +332,9 @@ fly deploy -c infra/phoenix.toml
 curl https://fmlds-eval-workshop-phoenix.fly.dev/healthz     # → "OK"
 ```
 
-⚠️ **Keep the local notebook app separate from the room board:** the board image
-is pinned to Phoenix **22.0.0**. Notebook 2 installs Phoenix **12.15.1** locally
-because Phoenix 22 pulls OpenTelemetry 1.45+ and SQLGlot 30.21, which conflict
-with Colab's Google ADK and Ibis pins. The notebook pins compatible telemetry
-dependencies; do not change these versions without checking the Colab resolver.
+⚠️ **Version lockstep:** the room-board Docker image and Notebook 2's local
+Phoenix package are both pinned to **22.0.0**. Keep the image in
+`infra/phoenix.toml` and `PHOENIX_VERSION` in the notebook generator aligned.
 
 ⚠️ **Auth is ON by default** (the Docker image binds a non-loopback host, and
 auth follows the bind address). Everything returns `401 Invalid token` until
@@ -435,8 +433,9 @@ secret and do the live pass.
       prints `mode=gateway` → deps auto-install → health check OK → data loads
       **2,500 rows from the raw GitHub URL** → compare the agent's answers with
       the signed-amount, fragmented-merchant, and missing-location examples.
-- [ ] **Notebook 2 (10 min, live):** bootstrap fetches `utils.py` from the repo
-       → `%pip` installs Colab-compatible Phoenix/OpenInference/OTel pins →
+- [ ] **Notebook 2 (10 min, live):** `%pip` installs Phoenix 22.0.0 and
+      OpenInference instrumentation before imports → bootstrap fetches `utils.py`
+      from the repo →
        `launch_app()` prints a **Colab-proxied URL** → register the local OTLP
        endpoint and instrument OpenAI calls → traces show an AGENT root, nested
        router CHAIN/LLM spans, and tool-handling CHAIN/TOOL spans with I/O →
@@ -455,7 +454,7 @@ secret and do the live pass.
 |---|---|
 | Badge/notebook 404 on GitHub | filename typo in the badge URL — check the three badge links in README |
 | Data load falls back to local / fails | raw.githubusercontent propagation lag — wait 1 min, re-run; verify repo is public |
-| Colab `%pip` reports Google ADK / Ibis dependency conflicts | Phoenix 22 requires newer OpenTelemetry and SQLGlot than Colab allows | keep notebook Phoenix at 12.15.1 with the explicit OTel / SQLGlot pins in its install cell; the room board remains at 22.0.0 |
+| Colab `%pip` reports dependency resolver warnings | pip detected version differences among preinstalled Colab packages; warnings alone do not mean Phoenix failed to install | continue if Phoenix imports and launches; if an import/instrumentation error occurs, restart the runtime and rerun from the top |
 | `launch_app()` URL is localhost or inaccessible in Colab | Colab proxy did not activate | Runtime → Restart, rerun the Phoenix launch cell, and use its printed URL |
 | Publish cell 401 | `PHOENIX_API_KEY` secret missing/typo (the board has auth ON) |
 | Publish "duplicate spans" | you already published from this runtime — expected on re-runs |

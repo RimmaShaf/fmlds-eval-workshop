@@ -8,9 +8,8 @@
 #
 # SQLite on a Fly volume is fine for a 1-day workshop (~30k spans). The
 # version-* image tags run as root, which avoids volume permission issues.
-# This board runs Phoenix 22.0.0. Notebook 2 uses a separate, older local
-# Phoenix package to avoid conflicting with Colab's preinstalled dependencies.
-# Full runbook: infra/DEPLOYMENT.md.
+# Client/server versions are pinned in lockstep: the notebook pip cell installs
+# arize-phoenix==22.0.0. Full runbook: infra/DEPLOYMENT.md.
 
 app = 'fmlds-eval-workshop-phoenix'
 primary_region = 'nrt'

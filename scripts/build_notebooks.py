@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 REPO = "RimmaShaf/fmlds-eval-workshop"
 RAW = f"https://raw.githubusercontent.com/{REPO}/main"
 COLAB = f"https://colab.research.google.com/github/{REPO}/blob/main"
-PHOENIX_VERSION = "12.15.1"
+PHOENIX_VERSION = "22.0.0"
 OPENINFERENCE_VERSION = "0.1.76"
 
 NB1 = ROOT / "01_build_your_agent.ipynb"
@@ -49,7 +49,8 @@ def code(src, tags=()):
 def badge(notebook):
     colab = f"[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)]({COLAB}/{notebook})"
     codespaces = f'<a href="https://codespaces.new/{REPO}?quickstart=1"><img src="https://github.com/codespaces/badge.svg" alt="Open in GitHub Codespaces" width="100"></a>'
-    return f"{colab} {codespaces}"
+    github = f"[View on GitHub](https://github.com/{REPO}/blob/main/{notebook})"
+    return f"{colab} {codespaces} {github}"
 
 
 def display_src(src):
@@ -1197,6 +1198,12 @@ be true (notebook 3), **gate** on it in CI (notebook 3).
 this notebook's source. Notebook 2 imports it so you don't re-run this notebook.)*
 """))
 
+nb1_cells.append(md(f"""---
+### Continue the workshop
+
+[Next: Notebook 2 — Tracing with Phoenix](https://github.com/{REPO}/blob/main/02_tracing_with_phoenix.ipynb)
+"""))
+
 
 # =====================================================================
 # Notebook 02 - Tracing with Phoenix
@@ -1219,20 +1226,18 @@ that implementation rather than creating a second agent that could drift.
 """))
 
 nb2_cells.append(md("""---
-## 1. Install Colab-compatible tracing libraries
+## 1. Install Phoenix tracing libraries
 
 The observability stack uses Phoenix's OpenTelemetry registration and OpenInference's
-OpenAI instrumentor. Colab pins OpenTelemetry for Google ADK and SQLGlot for Ibis, so this
-cell keeps those dependencies within Colab's supported versions. The local Phoenix UI
-package is older than the separately deployed room board.
+OpenAI instrumentor. This pins the local Phoenix package to the same version as the
+workshop's Phoenix board.
 """))
 
-nb2_cells.append(code(f'''%pip install -q arize-phoenix=={PHOENIX_VERSION} openinference-instrumentation-openai=={OPENINFERENCE_VERSION} google-auth==2.49.0 opentelemetry-api==1.42.1 opentelemetry-sdk==1.42.1 opentelemetry-exporter-otlp==1.42.1 opentelemetry-proto==1.42.1 opentelemetry-semantic-conventions==0.63b1 opentelemetry-instrumentation==0.63b1 "sqlglot>=23.4,<25.21"
-''', ("core",)))
+nb2_cells.append(code(f"%pip install -q arize-phoenix=={PHOENIX_VERSION} openinference-instrumentation-openai=={OPENINFERENCE_VERSION}", ("core",)))
 
-nb2_cells.append(md("""> If Colab asks for a runtime restart after installation, restart before continuing,
-> then rerun the notebook from the top. Install packages before importing the agent or
-> OpenTelemetry libraries so the instrumentor and SDK use the same versions.
+nb2_cells.append(md("""> Colab may report resolver warnings about packages already installed in its runtime.
+> If an import or instrumentation error follows, restart the runtime and rerun from the top.
+> This install runs before the agent and OpenTelemetry imports.
 """))
 
 nb2_cells.append(md("""---
@@ -1409,6 +1414,12 @@ else:
     )
     print("published:", result)
 ''', ("demo",)))
+
+nb2_cells.append(md(f"""---
+### Continue the workshop
+
+[Next: Notebook 3 — Evaluations](https://github.com/{REPO}/blob/main/03_evaluations.ipynb)
+"""))
 
 
 # =====================================================================
@@ -1682,6 +1693,12 @@ delete cases that no longer map to a real capability.
 - Where does the eval gate belong: pre-merge, nightly, or both?
 
 *Thank you - and may all your regressions be caught by robots, not users.*
+"""))
+
+nb3_cells.append(md(f"""---
+### Workshop home
+
+[Return to the workshop README](https://github.com/{REPO}/blob/main/README.md)
 """))
 
 

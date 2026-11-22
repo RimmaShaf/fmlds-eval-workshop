@@ -7,8 +7,9 @@ taxonomy are modeled on two public datasets used as design inspiration only:
 No rows are copied or redistributed; every value is regenerated here.
 
 Intentional pitfalls baked into the data:
-  - signed amounts (income/refunds positive, expenses negative) -> polarity trap
-  - merchant names fragmented across variants ("STARBUCKS #1042", ...) -> string trap
+  - signed amounts and positive refunds -> polarity and net-spend traps
+  - Starbucks variants include both "STARBUCKS" and the alias "SBUX" -> merchant trap
+  - a similar coffee shop is included as a decoy
   - no merchant location column of any kind -> schema hallucination trap
 """
 
@@ -32,6 +33,8 @@ DAILY_MERCHANTS = {
         ("STARBUCKS #1042", "Credit Card", 3.50, 7.50),
         ("STARBUCKS COFFEE KIOSK", "Credit Card", 4.00, 9.00),
         ("STARBUCKS STORE 08412", "Credit Card", 3.00, 6.50),
+        ("SBUX MOBILE ORDER 1042", "Credit Card", 3.50, 7.50),
+        ("TULLY'S COFFEE #882", "Credit Card", 3.00, 8.00),
         ("WHOLEFREDS MKT #104", "Credit Card", 35.00, 120.00),
         ("MCDONALD'S #1234", "Credit Card", 6.00, 14.00),
         ("SQ *TOKYO RAMEN YA", "Credit Card", 9.00, 22.00),
@@ -171,9 +174,13 @@ def compute_ground_truth(df: pd.DataFrame) -> dict:
     expenses["spend"] = -expenses["amount"]
 
     oct_expenses = round(float(expenses.loc[expenses["month"] == 10, "spend"].sum()), 2)
-    starbucks = round(
-        float(expenses.loc[expenses["raw_description"].str.contains("STARBUCKS"), "spend"].sum()), 2
-    )
+    refunds = d.loc[
+        (d["month"] == 10) & (d["amount"] > 0)
+        & d["raw_description"].str.contains("REFUND", case=False), "amount"
+    ].sum()
+    net_oct_expenses = round(oct_expenses - float(refunds), 2)
+    starbucks_rows = expenses["raw_description"].str.contains(r"STARBUCKS|SBUX", case=False, regex=True)
+    starbucks = round(float(expenses.loc[starbucks_rows, "spend"].sum()), 2)
     total_income = round(float(d.loc[d["category"] == "Income", "amount"].sum()), 2)
     by_cat = expenses.groupby("category")["spend"].sum().sort_values(ascending=False)
     top_category, top_value = str(by_cat.index[0]), round(float(by_cat.iloc[0]), 2)
@@ -184,6 +191,7 @@ def compute_ground_truth(df: pd.DataFrame) -> dict:
 
     return {
         "oct_expenses": oct_expenses,
+        "net_oct_expenses_after_refunds": net_oct_expenses,
         "starbucks": starbucks,
         "total_income": total_income,
         "top_category": top_category,
@@ -215,13 +223,22 @@ def build_cases(gt: dict) -> list[dict]:
             "ground_truth_logic": "df[(df.date.dt.month == 10) & (df.amount < 0)].amount.sum(), reported as a positive magnitude",
         },
         {
+            "id": "net_expenses_october_after_refunds",
+            "query": "What were my net expenses in October after transaction refunds, excluding income?",
+            "type": "numeric",
+            "trap": "refund_polarity",
+            "expected": {"value": gt["net_oct_expenses_after_refunds"]},
+            "tolerance": 0.01,
+            "ground_truth_logic": "October expense magnitudes minus positive transaction refunds; exclude positive income",
+        },
+        {
             "id": "starbucks_total",
             "query": "How much did I spend at Starbucks in total?",
             "type": "numeric",
             "trap": "fragmentation",
             "expected": {"value": gt["starbucks"]},
             "tolerance": 0.01,
-            "ground_truth_logic": "rows where raw_description contains 'STARBUCKS' (case-insensitive) and amount < 0, spend magnitudes summed",
+            "ground_truth_logic": "rows where raw_description contains STARBUCKS or SBUX (case-insensitive) and amount < 0, spend magnitudes summed",
         },
         {
             "id": "merchant_location",

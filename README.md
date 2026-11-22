@@ -18,19 +18,19 @@
 
 ## The story in 60 seconds
 
-1. **Notebook 1 — Build your Agent** — a hand-rolled tool-calling agent (schema lookup, guarded pandas REPL, financial rules) with a naive one-line system prompt. It fails silently on: sign/polarity inversion, merchant string fragmentation (`STARBUCKS #1042` vs `== "Starbucks"`), and schema hallucination (`merchant_city` does not exist).
+1. **Notebook 1 — Build your Agent** — a hand-rolled tool-calling agent (schema lookup, pandas analysis, financial rules, and charting) with a naive one-line system prompt. It demonstrates sign/refund mistakes, merchant aliases, and schema hallucination (`merchant_city` does not exist).
 2. **Notebook 2 — Tracing with Phoenix** — observability reveals what actually happened: first by reading the runs' own event logs (waterfall, token leaderboard), then with a real OpenTelemetry stack running *inside each participant's notebook* — tool cascades, retry bloat, token burn, and the "Mind Reader" sycophancy game.
-3. **Notebook 3 — Evaluations** — a 10-case golden suite with frozen programmatic ground truth: execution checks (AST, no traceback), **router checks** (did the model call the right tool), numeric ground-truth matches, and an LLM-as-judge rubric. Baseline hardened agent: **9/10**. Inject a "creative & conversational" prompt + `temperature=0.7`: **6/10**, caught automatically — and the same suite runs as the CI gate.
+3. **Notebook 3 — Evaluations** — an 11-case golden suite with frozen programmatic ground truth: execution checks (AST, no traceback), **router checks** (did the model call the right tool), numeric ground-truth matches, and an LLM-as-judge rubric. Baseline hardened agent: **10/11**. Inject a "creative & conversational" prompt + `temperature=0.7`: **6/11**, caught automatically — and the same suite runs as the CI gate.
 
 ## Repo map
 
 ```
 01_build_your_agent.ipynb      notebook 1: config, tools, the router loop, the three traps
 02_tracing_with_phoenix.ipynb  notebook 2: event logs -> local Phoenix -> Mind Reader -> publish to board
-03_evaluations.ipynb           notebook 3: golden suite, router checks, regression gate, beat-9/10, CI
+03_evaluations.ipynb           notebook 3: golden suite, router checks, regression gate, beat-11/11, CI
 utils.py                       canonical agent + eval harness (GENERATED; imported by notebooks 2-3 and CI)
 data/transactions.csv           synthetic ledger, 2,500 rows, May–Oct 2026 (seed 42)
-data/golden_eval_cases.json     10 golden cases + frozen ground truth
+data/golden_eval_cases.json     11 golden cases + frozen ground truth
 scripts/generate_dataset.py     regenerates data + ground truth deterministically
 scripts/build_notebooks.py      regenerates utils.py + all three notebooks (edit here, not the artifacts)
 scripts/run_evals.py            headless CI twin of notebook 3 (imports utils.py)
@@ -47,7 +47,7 @@ infra/DEPLOYMENT.md             field-tested gateway + board deployment runbook
 
 **Google Colab (primary):** open the notebooks in order — **1 Build your Agent → 2 Tracing with Phoenix → 3 Evaluations** (badges above, one per notebook). Enter your workshop key when the health-check cell asks, or save it as the `LITELLM_API_KEY` Colab secret; set it once per notebook. No Kaggle auth, no uploads: the data loads from this repo's raw URL, and notebooks 2–3 fetch the repo's `utils.py` automatically, so you don't need to re-run notebook 1. No Google account? Use the Codespaces or Binder badge above (GitHub account / no account at all respectively), or clone and run locally.
 
-**Local / Codespaces:** open the repo, `pip install -r requirements.txt`, then run the notebooks in order and enter your workshop key when prompted. They fall back to `data/transactions.csv` on disk if the hosted data is unavailable.
+**Local / Codespaces:** open the repo, `pip install -r requirements.txt`, then run the notebooks in order and enter your workshop key when prompted. The notebooks load the transaction data from the repository's hosted CSV.
 
 ## Instructor / ops runbook
 
@@ -103,10 +103,9 @@ ruff check scripts/ utils.py
 
 `utils.py` and the three `.ipynb` files are **generated artifacts** — never edit them by hand; edit the source fragments in `scripts/build_notebooks.py` and regenerate. The same fragments are both displayed in the notebooks and imported by CI, so notebook and CI can never drift apart.
 
-Expected mock results: baseline **9/10**, regression **6/10** (the four failures are the exact teaching moments: polarity, fragmentation, fabrication, hallucinated reassurance). To run a live gateway eval, set `LITELLM_API_KEY` and pass `--mode gateway`. Live-model results vary — that is the point of the harness.
+Expected mock results: baseline **10/11**, regression **6/11** (the failures demonstrate polarity/refund handling, merchant aliases, fabrication, and hallucinated reassurance). To run a live gateway eval, set `LITELLM_API_KEY` and pass `--mode gateway`. Live-model results vary — that is the point of the harness.
 
 ## Security notes
 
 - Seat keys, master keys and generated CSVs are gitignored; secrets only via environment / Colab secrets / Fly secrets.
-- The agent REPL blocks `os`/`subprocess`/`requests` imports and dangerous builtins via AST scan.
 - Per-key exposure is capped at $2.00; room-wide worst case $100, expected spend $5–$25.

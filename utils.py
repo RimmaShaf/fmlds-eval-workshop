@@ -41,7 +41,6 @@ MAGIC_MODEL = "gpt-4o"
 
 DATA_URL = os.getenv("WORKSHOP_DATA_URL", "https://raw.githubusercontent.com/RimmaShaf/fmlds-eval-workshop/main/data/transactions.csv")
 GOLDEN_URL = DATA_URL.rsplit("/", 1)[0] + "/golden_eval_cases.json"
-LOCAL_DATA = "data/transactions.csv"
 LOCAL_GOLDEN = "data/golden_eval_cases.json"
 
 client = None
@@ -87,164 +86,165 @@ import pandas as pd
 
 
 def load_data():
-    """Load the ledger once - from the repo's raw URL, local file as fallback."""
+    """Load the ledger once from the workshop's hosted CSV."""
     global df
     if globals().get("df") is None:
-        try:
-            df = pd.read_csv(DATA_URL)
-            source = "repo raw URL"
-        except Exception:
-            df = pd.read_csv(LOCAL_DATA)
-            source = "local file"
+        df = pd.read_csv(DATA_URL)
         df["date"] = pd.to_datetime(df["date"])
-        print(f"loaded {len(df)} transactions ({source})")
+        print(f"loaded {len(df)} transactions")
     return df
 
 
 
-TOOLS = {}
-TOOL_SPECS = []
-
-
-def register_tool(name, description, parameters, fn):
-    """Register a python function as a tool the model can call."""
-    TOOLS[name] = fn
-    TOOL_SPECS.append({
-        "type": "function",
-        "function": {"name": name, "description": description, "parameters": parameters},
-    })
-
-
 def fetch_data_schema():
-    sample = df.head(5).copy()
-    sample["date"] = sample["date"].dt.strftime("%Y-%m-%d")
+    """Return available columns, row count, and sample rows."""
     return {
-        "columns": {c: str(t) for c, t in df.dtypes.items()},
-        "n_rows": int(len(df)),
-        "date_range": [str(df["date"].min().date()), str(df["date"].max().date())],
-        "allowed_categories": sorted(df["category"].unique().tolist()),
-        "account_types": sorted(df["account_type"].unique().tolist()),
-        "sample_rows": sample.to_dict(orient="records"),
+        "columns": {column: str(dtype) for column, dtype in df.dtypes.items()},
+        "rows": len(df),
+        "sample_rows": df.head(5).astype(str).to_dict(orient="records"),
     }
-
-
-register_tool(
-    "fetch_data_schema",
-    "Return the transaction ledger schema: column names and dtypes, row count, date range, allowed category values, account types, and 5 sample rows. Call this before writing code that references any column.",
-    {"type": "object", "properties": {}, "required": []},
-    fetch_data_schema,
-)
-print("tools:", list(TOOLS))
-
-
-
-import ast
-
-BLOCKED = {"os", "sys", "subprocess", "requests", "urllib", "pathlib", "importlib",
-           "open", "exec", "eval", "compile", "__import__", "globals", "locals", "input"}
-
-
-def _guard(code_str):
-    """Parse the model's code without running it; reject blocked imports and builtins."""
-    try:
-        tree = ast.parse(code_str)
-    except SyntaxError as e:
-        return f"SyntaxError: {e}"
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import) and any(a.name.split(".")[0] in BLOCKED for a in node.names):
-            return "Blocked: imports are not allowed inside the agent sandbox."
-        if isinstance(node, ast.ImportFrom) and (node.module or "").split(".")[0] in BLOCKED:
-            return "Blocked: imports are not allowed inside the agent sandbox."
-        if isinstance(node, ast.Name) and node.id in BLOCKED:
-            return f"Blocked: use of '{node.id}' is not allowed inside the agent sandbox."
-        if isinstance(node, ast.Attribute) and node.attr.startswith("__"):
-            return "Blocked: dunder attribute access is not allowed inside the agent sandbox."
-    return None
 
 
 
 import io
-import traceback
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import redirect_stdout
 
 import matplotlib.pyplot as plt
-import numpy as np
-import seaborn as sns
 
 _AGENT_NS = {}
-EXEC_LOG = []
 
 
 def execute_python_code(code_str):
-    """Run a snippet in a stateful namespace holding df, pd, np, plt, sns.
-    Stdout, tracebacks and figures are captured and returned to the model."""
-    _AGENT_NS.update({"df": df, "pd": pd, "np": np, "plt": plt, "sns": sns})
-    blocked = _guard(code_str)
-    if blocked:
-        return {"ok": False, "stdout": "", "stderr": blocked, "figures": 0}
-    buf_out, buf_err = io.StringIO(), io.StringIO()
-    ok = True
-    with redirect_stdout(buf_out), redirect_stderr(buf_err):
-        try:
-            exec(compile(code_str, "<agent>", "exec"), _AGENT_NS)
-        except Exception:
-            ok = False
-            buf_err.write(traceback.format_exc())
-    figures = len(plt.get_fignums())
-    if figures and ok:
+    """Run code on df and return printed output or an error."""
+    _AGENT_NS.update({"df": df, "pd": pd, "plt": plt})
+    output = io.StringIO()
+    try:
+        with redirect_stdout(output):
+            exec(code_str, _AGENT_NS)
+        ok = True
+        error = ""
+    except Exception as e:
+        ok = False
+        error = f"{type(e).__name__}: {e}"
+    if ok and plt.get_fignums():
         plt.show()
-        plt.close("all")
-    entry = {"code": code_str, "ok": ok, "stderr": buf_err.getvalue()[-800:]}
-    EXEC_LOG.append(entry)  # the eval suite (notebook 3) grades the agent partly on this log
-    return {"ok": ok, "stdout": buf_out.getvalue()[-2000:], "stderr": entry["stderr"], "figures": figures}
+    plt.close("all")
+    return {"ok": ok, "stdout": output.getvalue()[-2000:], "stderr": error[-800:]}
 
 
-register_tool(
-    "execute_python_code",
-    "Execute a Python snippet in a stateful namespace that already contains the pandas DataFrame `df` (the bank transaction ledger) plus pd, np, plt and sns. Printed output, tracebacks and matplotlib figures are captured and returned. Prefer several small snippets over one large one.",
-    {
-        "type": "object",
-        "properties": {"code_str": {"type": "string", "description": "Python source to exec; the ledger DataFrame is available as df."}},
-        "required": ["code_str"],
-    },
-    execute_python_code,
-)
-print("tools:", list(TOOLS))
+
+ANALYSIS_CODE_PROMPT = """Write concise pandas code to answer the question.
+Use the existing DataFrame df. Print the final result.
+Columns: {columns}
+Sample rows: {sample}
+Question: {question}
+Return Python code only. Do not import libraries."""
+
+
+def generate_analysis_code(question):
+    """Ask the model to write pandas code for a ledger question."""
+    schema = fetch_data_schema()
+    prompt = ANALYSIS_CODE_PROMPT.format(
+        columns=schema["columns"], sample=schema["sample_rows"], question=question,
+    )
+    response = client.chat.completions.create(
+        model=AGENT_MODEL, messages=[{"role": "user", "content": prompt}],
+    )
+    code = response.choices[0].message.content.replace("```python", "").replace("```", "").strip()
+    print("Generated pandas code:")
+    print(code)
+    return code
+
+
+
+def analyze_transactions(question):
+    """Generate and run pandas code to answer a ledger question."""
+    code = generate_analysis_code(question)
+    result = execute_python_code(code)
+    result["code"] = code
+    return result
 
 
 
 FINANCIAL_RULES = [
-    {"id": "50-30-20", "keywords": ["50", "30", "20", "budget", "budgeting", "allocation"], "rule": "50/30/20 rule: needs <= 50% of after-tax income, wants <= 30%, savings & debt repayment >= 20%."},
-    {"id": "emergency-fund", "keywords": ["emergency", "fund", "buffer", "rainy"], "rule": "Emergency fund: hold 3-6 months of essential expenses in liquid savings; lean toward 6 if income is variable."},
-    {"id": "debt-to-income", "keywords": ["debt", "dti", "ratio", "loan", "loans"], "rule": "Debt-to-income: keep total monthly debt payments below 36% of gross monthly income."},
-    {"id": "housing-cost", "keywords": ["housing", "rent", "mortgage"], "rule": "Housing cost ratio: keep rent or mortgage below 30% of gross monthly income."},
-    {"id": "savings-rate", "keywords": ["savings rate", "saving", "save"], "rule": "Savings rate: save at least 20% of income; 15% is a common floor for retirement-focused savers."},
-    {"id": "subscription-hygiene", "keywords": ["subscription", "subscriptions", "recurring", "netflix", "spotify"], "rule": "Subscription hygiene: audit recurring charges quarterly; cancel anything unused for 60+ days."},
+    {"keywords": ["50/30/20", "budget"], "rule": "50/30/20: spend up to 50% on needs, 30% on wants, and save at least 20% of after-tax income."},
+    {"keywords": ["emergency", "fund", "buffer"], "rule": "Keep 3-6 months of essential expenses in liquid savings."},
+    {"keywords": ["debt", "loan"], "rule": "Keep monthly debt payments below 36% of gross monthly income."},
+    {"keywords": ["housing", "rent", "mortgage"], "rule": "Keep housing costs below 30% of gross monthly income."},
+    {"keywords": ["saving", "savings"], "rule": "Aim to save at least 20% of income."},
+    {"keywords": ["subscription", "recurring"], "rule": "Review recurring subscriptions regularly and cancel unused ones."},
 ]
 
 
 def financial_rules_lookup(query):
-    """Keyword-scored lookup over deterministic finance heuristics."""
+    """Return finance rules whose keywords appear in the question."""
     q = query.lower()
-    scored = [(sum(1 for kw in r["keywords"] if kw in q), r) for r in FINANCIAL_RULES]
-    scored = [pair for pair in scored if pair[0] > 0]
-    scored.sort(key=lambda pair: -pair[0])
-    if not scored:
-        return {"matches": [], "note": "No financial heuristic matched the query."}
-    return {"matches": [r for _, r in scored[:3]]}
+    return {"matches": [r["rule"] for r in FINANCIAL_RULES if any(word in q for word in r["keywords"])]}
 
 
-register_tool(
-    "financial_rules_lookup",
-    "Look up deterministic personal-finance heuristics (50/30/20 budgeting, emergency fund sizing, debt-to-income, housing ratio, savings rate, subscription hygiene). Returns matching rules or a no-match note.",
-    {
-        "type": "object",
-        "properties": {"query": {"type": "string", "description": "Free-text topic, e.g. 'emergency fund' or 'budget rule'."}},
-        "required": ["query"],
-    },
-    financial_rules_lookup,
-)
-print("tools:", list(TOOLS))
+
+CHART_PROMPT = """Write short Python code to make the requested chart.
+Use the existing pandas DataFrame df and matplotlib.pyplot as plt.
+Columns: {columns}
+Sample rows: {sample}
+Chart goal: {goal}
+Return Python code only. Do not import libraries."""
+
+
+def generate_chart_code(visualization_goal):
+    """Ask the model for Python code that makes the requested chart."""
+    schema = fetch_data_schema()
+    prompt = CHART_PROMPT.format(
+        columns=list(schema["columns"]), sample=schema["sample_rows"], goal=visualization_goal,
+    )
+    response = client.chat.completions.create(
+        model=AGENT_MODEL, messages=[{"role": "user", "content": prompt}],
+    )
+    code = response.choices[0].message.content.replace("```python", "").replace("```", "").strip()
+    print("Generated chart code:")
+    print(code)
+    return code
+
+
+
+def visualize_transactions(visualization_goal):
+    """Generate and display a chart of the transaction ledger."""
+    code = generate_chart_code(visualization_goal)
+    return execute_python_code(code)
+
+
+
+TOOL_SPECS = [
+    {"type": "function", "function": {
+        "name": "fetch_data_schema",
+        "description": "Show ledger columns and sample rows.",
+        "parameters": {"type": "object", "properties": {}, "required": []},
+    }},
+    {"type": "function", "function": {
+        "name": "analyze_transactions",
+        "description": "Answer a transaction question with pandas code.",
+        "parameters": {"type": "object", "properties": {"question": {"type": "string"}}, "required": ["question"]},
+    }},
+    {"type": "function", "function": {
+        "name": "financial_rules_lookup",
+        "description": "Look up a personal-finance rule.",
+        "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
+    }},
+    {"type": "function", "function": {
+        "name": "visualize_transactions",
+        "description": "Create a chart from the transaction ledger.",
+        "parameters": {"type": "object", "properties": {"visualization_goal": {"type": "string"}}, "required": ["visualization_goal"]},
+    }},
+]
+
+
+
+TOOLS = {
+    "fetch_data_schema": fetch_data_schema,
+    "analyze_transactions": analyze_transactions,
+    "financial_rules_lookup": financial_rules_lookup,
+    "visualize_transactions": visualize_transactions,
+}
 
 
 
@@ -261,9 +261,10 @@ Non-negotiable rules:
 2. `amount` is signed: positive = income, refund or credit; negative = expense. "Spending" and "expenses" mean the magnitude of negative amounts only.
 3. raw_description values are noisy bank strings. Never match merchants by exact equality; use case-insensitive substring or regex matching.
 4. If the data needed for a request does not exist, say so plainly and offer the closest legitimate alternative. Never fabricate columns, merchants or numbers.
-5. Compute everything with execute_python_code - never do arithmetic in your head.
-6. End every quantitative answer with a final line of exactly: FINAL ANSWER: <number>
-7. Stay concise: a short explanation, the supporting number(s), then the FINAL ANSWER line."""
+5. Use analyze_transactions to calculate ledger answers.
+6. Use visualize_transactions when the user asks for a chart.
+7. End every quantitative answer with a final line of exactly: FINAL ANSWER: <number>
+8. Stay concise: a short explanation, the supporting number(s), then the FINAL ANSWER line."""
 
 CREATIVE_SYSTEM_PROMPT = """You are a warm, creative financial storyteller. Chat naturally with the user about their money, like a friend who happens to know data science. Feel free to riff, estimate, round generously and paint a picture with the numbers - exact bookkeeping matters less than an engaging, encouraging conversation. Use the tools when it's convenient."""
 
@@ -290,22 +291,14 @@ def _span(name, kind):
 
 
 def _end_span(handle):
+    """Close a span when tracing is enabled."""
     if handle is not None:
         handle.__exit__(None, None, None)
 
 
 
-import time
-
+import time  # trace-hook
 MAX_TOKENS = 1500
-
-
-def _chat(messages, temperature, model, tools=None):
-    """One LLM call through the workshop gateway."""
-    kwargs = dict(model=model, messages=messages, temperature=temperature, max_tokens=MAX_TOKENS)
-    if tools:
-        kwargs["tools"] = tools
-    return client.chat.completions.create(**kwargs)
 
 
 
@@ -315,58 +308,66 @@ MAX_TOOL_CALLS = 6
 
 
 def dispatch_tool(tc):
-    """Execute one tool call requested by the model; errors become tool output, never crashes."""
+    """Run the selected tool and return its result or error."""
     fn = TOOLS.get(tc.function.name)
     if fn is None:
         return {"error": f"unknown tool: {tc.function.name}"}
     try:
-        return fn(**json.loads(tc.function.arguments or "{}"))
+        arguments = json.loads(tc.function.arguments or "{}")
+        return fn(**arguments)
     except Exception as e:
         return {"error": f"{type(e).__name__}: {e}"}
 
 
 
-def run_agent(query, system_prompt=NAIVE_SYSTEM_PROMPT, temperature=0.0, model=None, label=None, max_tool_calls=MAX_TOOL_CALLS):
-    """The agent loop: the model + tool schemas do the routing; we dispatch and
-    feed results back until a final answer or the tool budget runs out.
-
-    Every LLM call and tool dispatch is appended to `events` (latency, tokens,
-    errors) - notebook 2 turns that log into a real tracing view.
-    """
+def run_agent(query, system_prompt=NAIVE_SYSTEM_PROMPT, temperature=0.0, model=None, label=None):
+    """Run the tool-calling loop until the model returns a final answer."""
     model = model or AGENT_MODEL
-    label = label or query[:48]
-    events = []
-    EXEC_LOG.clear()
+    label = label or query[:48]  # span-hook
+    events = []  # trace-hook
+    executed_code = []  # eval-hook
     messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": query}]
     tool_calls_used = 0
     answer = ""
     root_span = _span(label, "CHAIN")  # span-hook
     while True:
-        t0 = time.time()
-        resp = _chat(messages, temperature, model, tools=TOOL_SPECS)
+        t0 = time.time()  # trace-hook
+        print("Router call")
+        resp = client.chat.completions.create(
+            model=model, messages=messages, temperature=temperature,
+            max_tokens=MAX_TOKENS, tools=TOOL_SPECS,
+        )
         msg = resp.choices[0].message
-        events.append({"kind": "llm", "name": model, "latency": round(time.time() - t0, 2),
-                       "prompt_tokens": getattr(resp.usage, "prompt_tokens", 0) or 0,
-                       "completion_tokens": getattr(resp.usage, "completion_tokens", 0) or 0})
+        events.append({"kind": "llm", "name": model, "latency": round(time.time() - t0, 2), "prompt_tokens": getattr(resp.usage, "prompt_tokens", 0) or 0, "completion_tokens": getattr(resp.usage, "completion_tokens", 0) or 0})  # trace-hook
         messages.append(msg.model_dump(exclude_none=True))
-        if not msg.tool_calls or tool_calls_used >= max_tool_calls:
+        if not msg.tool_calls or tool_calls_used >= MAX_TOOL_CALLS:
             answer = msg.content or ""
+            print("Router result:", answer)
             break
         for tc in msg.tool_calls:
             tool_calls_used += 1
-            t0 = time.time()
+            t0 = time.time()  # trace-hook
             tool_span = _span(tc.function.name, "TOOL")  # span-hook
+            print(f"Calling {tc.function.name} tool")
             out = dispatch_tool(tc)
             _end_span(tool_span)  # span-hook
-            events.append({"kind": "tool", "name": tc.function.name, "latency": round(time.time() - t0, 2),
-                           "error": out.get("ok") is False or "error" in out})
+            print("Tool result:", out)
+            code = out.get("code", "")  # eval-hook
+            if code:  # eval-hook
+                executed_code.append({"code": code, "ok": out.get("ok", False), "stderr": out.get("stderr", "")})  # eval-hook
+            events.append({"kind": "tool", "name": tc.function.name, "latency": round(time.time() - t0, 2), "error": out.get("ok") is False or "error" in out})  # trace-hook
             messages.append({"role": "tool", "tool_call_id": tc.id, "content": json.dumps(out)[:4000]})
-        if tool_calls_used >= max_tool_calls:
+        if tool_calls_used >= MAX_TOOL_CALLS:
             messages.append({"role": "user", "content": "Tool budget exhausted - give your best final answer now."})
     _end_span(root_span)  # span-hook
-    return {"query": query, "label": label, "answer": answer, "messages": messages,
-            "tool_calls": tool_calls_used, "executed_code": list(EXEC_LOG), "events": events,
-            "model": model, "temperature": temperature, "system_prompt": system_prompt}
+    result = {"answer": answer}
+    result.update({  # eval-hook
+        "query": query, "label": label, "messages": messages,  # eval-hook
+        "tool_calls": tool_calls_used, "executed_code": executed_code,  # eval-hook
+        "model": model, "temperature": temperature, "system_prompt": system_prompt,  # eval-hook
+    })  # eval-hook
+    result["events"] = events  # trace-hook
+    return result
 
 
 
@@ -376,6 +377,7 @@ FINAL_ANSWER_RE = re.compile(r"final\s+answer\s*:\s*\$?\s*(-?[\d,]+(?:\.\d+)?)",
 
 
 def extract_final_number(text):
+    """Return the numeric value after FINAL ANSWER, or None if missing."""
     m = FINAL_ANSWER_RE.search(text or "")
     if not m:
         return None
@@ -418,14 +420,15 @@ def leaderboard(results):
 
 
 REQUIRED_TOOLS = {
-    "total_expenses_october": ["execute_python_code"],
-    "starbucks_total": ["execute_python_code"],
+    "total_expenses_october": ["analyze_transactions"],
+    "net_expenses_october_after_refunds": ["analyze_transactions"],
+    "starbucks_total": ["analyze_transactions"],
     "merchant_location": ["fetch_data_schema"],
-    "total_income": ["execute_python_code"],
-    "top_spending_category": ["execute_python_code"],
-    "avg_monthly_spending": ["execute_python_code"],
-    "largest_single_expense": ["execute_python_code"],
-    "transaction_count_may": ["execute_python_code"],
+    "total_income": ["analyze_transactions"],
+    "top_spending_category": ["analyze_transactions"],
+    "avg_monthly_spending": ["analyze_transactions"],
+    "largest_single_expense": ["analyze_transactions"],
+    "transaction_count_may": ["analyze_transactions"],
     "advisory_budget_5030_20": ["financial_rules_lookup"],
     "advisory_emergency_fund": ["financial_rules_lookup"],
 }
@@ -447,94 +450,93 @@ import ast
 
 
 def check_code(result):
-    """Execution eval: the generated code parses, and the last chunk ran clean."""
+    """Check that every generated code chunk parses and runs successfully."""
     chunks = result["executed_code"]
-
-    def parses(code_str):
+    code_valid = bool(chunks)
+    for chunk in chunks:
         try:
-            ast.parse(code_str)
-            return True
+            ast.parse(chunk["code"])
         except SyntaxError:
-            return False
+            code_valid = False
 
     return {
         "n_chunks": len(chunks),
-        "code_valid": len(chunks) > 0 and all(parses(c["code"]) for c in chunks),
-        "no_traceback": bool(chunks) and chunks[-1]["ok"],
+        "code_valid": code_valid,
+        "no_traceback": bool(chunks) and all(chunk["ok"] for chunk in chunks),
     }
 
 
 
 def _merchant_token(merchant):
+    """Get a distinctive word to check that the answer names the merchant."""
     tokens = [t for t in re.split(r"[^A-Za-z]+", merchant.upper()) if len(t) >= 4]
     return tokens[0] if tokens else merchant.upper()[:6]
 
 
+
 def check_numeric(case, result):
-    """Ground-truth eval: the FINAL ANSWER number matches the expected value."""
+    """Check the final number against the case's expected value."""
     expected = case["expected"]
     got = extract_final_number(result["answer"])
     out = {"extracted": got, "numeric_ok": False}
     if got is None:
         return out
-    if abs(abs(got) - float(expected["value"])) <= case["tolerance"] + 1e-9:
-        out["numeric_ok"] = True
+    out["numeric_ok"] = abs(got - float(expected["value"])) <= case["tolerance"] + 1e-9
     if "category" in expected:
         out["category_ok"] = expected["category"].lower() in result["answer"].lower()
     if "merchant_contains" in expected:
-        token = _merchant_token(expected["merchant_contains"])
-        out["merchant_ok"] = token.lower() in result["answer"].lower()
+        out["merchant_ok"] = _merchant_token(expected["merchant_contains"]).lower() in result["answer"].lower()
     return out
 
 
+
 def _case_passes(case, checks):
-    """Fail closed: anything missing or crashed means FAIL, never a silent pass."""
+    """Pass only when all checks required for this case type pass."""
     ctype = case["type"]
     if ctype == "numeric":
-        return bool(
-            checks.get("answered") and checks.get("code_valid") and checks.get("no_traceback")
-            and checks.get("numeric_ok") and checks.get("router_ok", True)
-            and checks.get("category_ok", True) and checks.get("merchant_ok", True)
+        required = ("answered", "code_valid", "no_traceback", "numeric_ok", "router_ok")
+        return all(checks.get(key) for key in required) and all(
+            checks.get(key, True) for key in ("category_ok", "merchant_ok")
         )
     if ctype == "behavior":
-        return bool(checks.get("answered") and checks.get("code_valid") and checks.get("no_traceback")
-                    and checks.get("router_ok", True) and checks.get("judge_pass"))
-    return bool(checks.get("answered") and checks.get("router_ok", True) and checks.get("judge_pass"))
+        return all(checks.get(key) for key in ("answered", "code_valid", "no_traceback", "router_ok", "judge_pass"))
+    return all(checks.get(key) for key in ("answered", "router_ok", "judge_pass"))
 
 
 
-JUDGE_SYSTEM_PROMPT = """You are a strict, neutral evaluation judge grading an AI financial assistant. You compare the assistant's answer against provided ground truth. Respond with JSON only."""
+JUDGE_SYSTEM_PROMPT = """You are a strict, neutral evaluation judge grading an AI financial assistant. Compare the answer against the provided ground truth and return JSON only."""
+
+
+
+import json
 
 
 def _parse_json(text):
+    """Parse the judge's JSON response; malformed output fails closed."""
     try:
         return json.loads(text)
     except Exception:
-        start, end = text.find("{"), text.rfind("}")
-        if start >= 0 and end > start:
-            try:
-                return json.loads(text[start:end + 1])
-            except Exception:
-                pass
         return {"pass": False, "reason": "judge output unparseable", "scores": {}}
 
 
+
 def judge_case(case, result):
-    """LLM-as-a-judge: score the answer against a rubric, anchored to ground truth."""
+    """Grade an answer against the case's ground truth and rubric."""
     payload = {
         "user_query": case["query"],
         "agent_answer": result["answer"],
         "ground_truth": case["expected"],
         "grading_rubric": case.get("judge_rubric"),
-        "instructions": "Score each rubric dimension from 1 to 5. Set 'pass' to true only if every dimension scores 4 or higher and no stated figure contradicts the ground truth. Respond as JSON: {\"scores\": {\"<dimension>\": n}, \"pass\": bool, \"reason\": \"...\"}",
+        "instructions": "Score each rubric dimension from 1 to 5. Pass only if every score is at least 4 and no figure contradicts the ground truth. Return JSON with scores, pass, and reason.",
     }
-    resp = _chat(
-        [{"role": "system", "content": JUDGE_SYSTEM_PROMPT},
-         {"role": "user", "content": json.dumps(payload, indent=2)}],
-        temperature=0.0,
+    response = client.chat.completions.create(
         model=JUDGE_MODEL,
+        messages=[{"role": "system", "content": JUDGE_SYSTEM_PROMPT},
+                  {"role": "user", "content": json.dumps(payload)}],
+        temperature=0.0,
+        max_tokens=MAX_TOKENS,
     )
-    return _parse_json(resp.choices[0].message.content)
+    return _parse_json(response.choices[0].message.content)
 
 
 
@@ -583,6 +585,7 @@ import urllib.request
 
 
 def _load_json(url, local_path):
+    """Load JSON from its hosted copy, falling back to the local file."""
     try:
         with urllib.request.urlopen(url, timeout=15) as r:
             return _json.loads(r.read())
@@ -603,12 +606,13 @@ def load_golden():
 
 # ---------------------------------------------------------------------------
 # CI-only mock twin: a deterministic stand-in for run_agent + judge_case that
-# reproduces the workshop narrative (naive fails the traps, hardened 9/10,
-# creative 6/10) with zero API calls. Displayed in NO notebook - the CI gate
+# reproduces the workshop narrative (naive fails the traps, hardened 10/11,
+# creative 6/11) with zero API calls. Displayed in NO notebook - the CI gate
 # (scripts/run_evals.py --mode mock) injects it into the same harness.
 # ---------------------------------------------------------------------------
 
 def _mock_style(system_prompt):
+    """Label a prompt as hardened, creative, or naive for deterministic CI tests."""
     if system_prompt == HARDENED_SYSTEM_PROMPT:
         return "hardened"
     if system_prompt == CREATIVE_SYSTEM_PROMPT:
@@ -617,7 +621,10 @@ def _mock_style(system_prompt):
 
 
 def _mock_case_id(query):
+    """Match a test question to its golden-case identifier."""
     q = query.lower()
+    if "october" in q and "refund" in q:
+        return "net_expenses_october_after_refunds"
     if "october" in q and "expense" in q:
         return "total_expenses_october"
     if "starbucks" in q:
@@ -641,10 +648,13 @@ def _mock_case_id(query):
     return "unknown"
 
 
-_CODE_OK = lambda code: {"code": code, "ok": True, "stderr": ""}
+def _CODE_OK(code):
+    """Build a successful mock code-execution record."""
+    return {"code": code, "ok": True, "stderr": ""}
 
 
 def mock_agent(query, system_prompt=NAIVE_SYSTEM_PROMPT, temperature=0.0, model=None, label=None, max_tool_calls=MAX_TOOL_CALLS):
+    """Return a deterministic stand-in for one live agent run."""
     model = model or AGENT_MODEL
     label = label or query[:48]
     style = _mock_style(system_prompt)
@@ -654,102 +664,120 @@ def mock_agent(query, system_prompt=NAIVE_SYSTEM_PROMPT, temperature=0.0, model=
 
     code_oct_naive = _CODE_OK("oct = df[df['date'].dt.month == 10]\nprint(oct['amount'].abs().sum())")
     code_oct_hard = _CODE_OK("oct = df[(df['date'].dt.month == 10) & (df['amount'] < 0)]\nprint(round(-oct['amount'].sum(), 2))")
+    code_oct_net = _CODE_OK("oct = df[df['date'].dt.month == 10]\nexpenses = -oct.loc[oct['amount'] < 0, 'amount'].sum()\nrefunds = oct.loc[oct['raw_description'].str.contains('REFUND', case=False) & (oct['amount'] > 0), 'amount'].sum()\nprint(round(expenses - refunds, 2))")
     code_sbux_naive = _CODE_OK("sbux = df[df['raw_description'] == 'Starbucks']\nprint(sbux['amount'].sum())")
-    code_sbux_hard = _CODE_OK("sbux = df[df['raw_description'].str.contains('STARBUCKS', case=False) & (df['amount'] < 0)]\nprint(round(-sbux['amount'].sum(), 2))")
+    code_sbux_hard = _CODE_OK("sbux = df[df['raw_description'].str.contains('STARBUCKS|SBUX', case=False, regex=True) & (df['amount'] < 0)]\nprint(round(-sbux['amount'].sum(), 2))")
     code_city_fail = {"code": "df.groupby('merchant_city')['amount'].sum()", "ok": False, "stderr": "KeyError: 'merchant_city'"}
     code_city_pivot = _CODE_OK("df[df['amount'] < 0].groupby('category')['amount'].agg(['count', 'sum'])")
 
     answers = {
         ("total_expenses_october", "naive"): (
             f"Looking at your October statement, you spent ${oct_all_abs:,.2f} in October.\n\nFINAL ANSWER: {oct_all_abs:.2f}",
-            [code_oct_naive], ["fetch_data_schema", "execute_python_code"],
+            [code_oct_naive], ["fetch_data_schema", "analyze_transactions"],
         ),
         ("total_expenses_october", "hardened"): (
             f"Counting only negative amounts (expenses) in October, and excluding your salary and the refund, your total expenses were ${gt['oct_expenses']:,.2f}.\n\nFINAL ANSWER: {gt['oct_expenses']:.2f}",
-            [code_oct_hard], ["fetch_data_schema", "execute_python_code"],
+            [code_oct_hard], ["fetch_data_schema", "analyze_transactions"],
         ),
         ("total_expenses_october", "creative"): (
             "October was a BIG month for your wallet - honestly a little scary! All in you're looking at somewhere around $8,000 give or take, with a lot of cozy treats along the way. Budgets are journeys, not destinations!\n\nFINAL ANSWER: 8000.00",
-            [code_oct_naive], ["execute_python_code"],
+            [code_oct_naive], ["analyze_transactions"],
+        ),
+        ("net_expenses_october_after_refunds", "hardened"): (
+            f"After subtracting October transaction refunds and excluding income, net expenses were ${gt['net_oct_expenses_after_refunds']:,.2f}.\n\nFINAL ANSWER: {gt['net_oct_expenses_after_refunds']:.2f}",
+            [code_oct_net], ["fetch_data_schema", "analyze_transactions"],
+        ),
+        ("net_expenses_october_after_refunds", "creative"): (
+            f"October expenses were about ${gt['oct_expenses']:,.2f}; refunds are small, so that's close enough.\n\nFINAL ANSWER: {gt['oct_expenses']:.2f}",
+            [code_oct_hard], ["analyze_transactions"],
+        ),
+        ("net_expenses_october_after_refunds", "hardened"): (
+            f"After subtracting October transaction refunds and excluding income, your net expenses were ${gt['net_oct_expenses_after_refunds']:,.2f}.\n\nFINAL ANSWER: {gt['net_oct_expenses_after_refunds']:.2f}",
+            [_CODE_OK("oct = df[df['date'].dt.month == 10]\nexpenses = -oct.loc[oct['amount'] < 0, 'amount'].sum()\nrefunds = oct.loc[oct['raw_description'].str.contains('REFUND', case=False) & (oct['amount'] > 0), 'amount'].sum()\nprint(round(expenses - refunds, 2))")],
+            ["fetch_data_schema", "analyze_transactions"],
+        ),
+        ("net_expenses_october_after_refunds", "creative"): (
+            f"Your October spending was ${gt['oct_expenses']:,.2f}, before refunds.\n\nFINAL ANSWER: {gt['oct_expenses']:.2f}",
+            [code_oct_hard], ["analyze_transactions"],
         ),
         ("starbucks_total", "naive"): (
             "I searched your statements for Starbucks but found no matching transactions. Your total Starbucks spend is $0.00.\n\nFINAL ANSWER: 0.00",
-            [code_sbux_naive], ["execute_python_code"],
+            [code_sbux_naive], ["analyze_transactions"],
         ),
         ("starbucks_total", "hardened"): (
-            f"Matching case-insensitively, three merchant variants exist: STARBUCKS #1042, STARBUCKS COFFEE KIOSK and STARBUCKS STORE 08412. Your total Starbucks spend was ${gt['starbucks']:,.2f}.\n\nFINAL ANSWER: {gt['starbucks']:.2f}",
-            [code_sbux_hard], ["fetch_data_schema", "execute_python_code"],
+            f"Matching Starbucks descriptions, including the SBUX alias, your total Starbucks spend was ${gt['starbucks']:,.2f}.\n\nFINAL ANSWER: {gt['starbucks']:.2f}",
+            [code_sbux_hard], ["fetch_data_schema", "analyze_transactions"],
         ),
         ("starbucks_total", "creative"): (
             "Oh, you and your lattes! Somewhere around $50-ish of pure coffee vibes - honestly, treat yourself, life is short!",
-            [code_sbux_naive], ["execute_python_code"],
+            [code_sbux_naive], ["analyze_transactions"],
         ),
         ("merchant_location", "naive"): (
             "Here is your spending broken down by merchant location:\n\n- Tokyo: $3,120.40\n- Osaka: $894.10\n- Yokohama: $421.55",
-            [code_city_fail, code_city_pivot], ["execute_python_code", "execute_python_code"],
+            [code_city_fail, code_city_pivot], ["analyze_transactions", "analyze_transactions"],
         ),
         ("merchant_location", "hardened"): (
             "Your ledger has no location data. The schema is exactly: transaction_id, date, raw_description, category, amount, account_type - there is no merchant city column, so a location breakdown is not possible. The closest legitimate view is spend by merchant / category, which I can produce on request.",
-            [_CODE_OK("print(sorted(df.columns))")], ["fetch_data_schema", "execute_python_code"],
+            [_CODE_OK("print(sorted(df.columns))")], ["fetch_data_schema", "analyze_transactions"],
         ),
         ("merchant_location", "creative"): (
             "Ooh, let me paint the map of your money! Tokyo steals the show with about $3,000, Osaka around $800, and a cheeky $400 in Kyoto - you clearly love the big-city lights!",
-            [code_city_fail, code_city_pivot], ["execute_python_code", "execute_python_code"],
+            [code_city_fail, code_city_pivot], ["analyze_transactions", "analyze_transactions"],
         ),
         ("total_income", "hardened"): (
             f"Summing all rows in the Income category (salary, freelance invoices, dividends, tax refund), your total income over the 6 months was ${gt['total_income']:,.2f}.\n\nFINAL ANSWER: {gt['total_income']:.2f}",
-            [_CODE_OK("inc = df[df['category'] == 'Income']\nprint(round(inc['amount'].sum(), 2))")], ["fetch_data_schema", "execute_python_code"],
+            [_CODE_OK("inc = df[df['category'] == 'Income']\nprint(round(inc['amount'].sum(), 2))")], ["fetch_data_schema", "analyze_transactions"],
         ),
         ("total_income", "creative"): (
             f"Your income flow is honestly gorgeous - about ${gt['total_income']:,.2f} across the half-year, salary plus those fabulous freelance wins and a cheeky tax refund!\n\nFINAL ANSWER: {gt['total_income']:.2f}",
-            [_CODE_OK("inc = df[df['category'] == 'Income']\nprint(round(inc['amount'].sum(), 2))")], ["fetch_data_schema", "execute_python_code"],
+            [_CODE_OK("inc = df[df['category'] == 'Income']\nprint(round(inc['amount'].sum(), 2))")], ["fetch_data_schema", "analyze_transactions"],
         ),
         ("top_spending_category", "hardened"): (
-            f"Your highest-spend category is {gt['top_category']} at ${gt['top_category_value']:,.2f} over 6 months (dominated by rent).\n\nFINAL ANSWER: {gt['top_category_value']:.2f}",
-            [_CODE_OK("sp = df[df['amount'] < 0].copy()\nsp['spend'] = -sp['amount']\nprint(sp.groupby('category')['spend'].sum().sort_values(ascending=False).head(3))")], ["fetch_data_schema", "execute_python_code"],
+            f"Your highest-spend category is {gt['top_category']} at ${gt['top_category_value']:,.2f} over 6 months.\n\nFINAL ANSWER: {gt['top_category_value']:.2f}",
+            [_CODE_OK("sp = df[df['amount'] < 0].copy()\nsp['spend'] = -sp['amount']\nprint(sp.groupby('category')['spend'].sum().sort_values(ascending=False).head(3))")], ["fetch_data_schema", "analyze_transactions"],
         ),
         ("top_spending_category", "creative"): (
-            f"Housing wears the crown, darling - a majestic ${gt['top_category_value']:,.2f} over six months, mostly royal rent!\n\nFINAL ANSWER: {gt['top_category_value']:.2f}",
-            [_CODE_OK("sp = df[df['amount'] < 0].copy()\nsp['spend'] = -sp['amount']\nprint(sp.groupby('category')['spend'].sum().sort_values(ascending=False).head(3))")], ["fetch_data_schema", "execute_python_code"],
+            f"{gt['top_category']} wears the crown, darling - a majestic ${gt['top_category_value']:,.2f} over six months!\n\nFINAL ANSWER: {gt['top_category_value']:.2f}",
+            [_CODE_OK("sp = df[df['amount'] < 0].copy()\nsp['spend'] = -sp['amount']\nprint(sp.groupby('category')['spend'].sum().sort_values(ascending=False).head(3))")], ["fetch_data_schema", "analyze_transactions"],
         ),
         ("avg_monthly_spending", "hardened"): (
             f"Your average monthly spending (expense magnitudes only) was ${gt['avg_monthly_expenses']:,.2f}.\n\nFINAL ANSWER: {gt['avg_monthly_expenses']:.2f}",
-            [_CODE_OK("sp = df[df['amount'] < 0].copy()\nsp['spend'] = -sp['amount']\nprint(round(sp.groupby(df['date'].dt.month)['spend'].sum().mean(), 2))")], ["fetch_data_schema", "execute_python_code"],
+            [_CODE_OK("sp = df[df['amount'] < 0].copy()\nsp['spend'] = -sp['amount']\nprint(round(sp.groupby(df['date'].dt.month)['spend'].sum().mean(), 2))")], ["fetch_data_schema", "analyze_transactions"],
         ),
         ("avg_monthly_spending", "creative"): (
             f"Roughly ${gt['avg_monthly_expenses']:,.2f} a month flows out - very normal big-city energy, love it!\n\nFINAL ANSWER: {gt['avg_monthly_expenses']:.2f}",
-            [_CODE_OK("sp = df[df['amount'] < 0].copy()\nsp['spend'] = -sp['amount']\nprint(round(sp.groupby(df['date'].dt.month)['spend'].sum().mean(), 2))")], ["fetch_data_schema", "execute_python_code"],
+            [_CODE_OK("sp = df[df['amount'] < 0].copy()\nsp['spend'] = -sp['amount']\nprint(round(sp.groupby(df['date'].dt.month)['spend'].sum().mean(), 2))")], ["fetch_data_schema", "analyze_transactions"],
         ),
         ("largest_single_expense", "hardened"): (
             f"Your single largest expense was rent to {gt['largest_expense_merchant']} at ${gt['largest_expense_value']:,.2f} per month.\n\nFINAL ANSWER: {gt['largest_expense_value']:.2f}",
-            [_CODE_OK("print(df.loc[df['amount'].idxmin(), ['raw_description', 'amount']])")], ["fetch_data_schema", "execute_python_code"],
+            [_CODE_OK("print(df.loc[df['amount'].idxmin(), ['raw_description', 'amount']])")], ["fetch_data_schema", "analyze_transactions"],
         ),
         ("largest_single_expense", "creative"): (
             f"The big one is your rent to SAKURA HEIGHTS - a majestic ${gt['largest_expense_value']:,.2f} every single month!\n\nFINAL ANSWER: {gt['largest_expense_value']:.2f}",
-            [_CODE_OK("print(df.loc[df['amount'].idxmin(), ['raw_description', 'amount']])")], ["fetch_data_schema", "execute_python_code"],
+            [_CODE_OK("print(df.loc[df['amount'].idxmin(), ['raw_description', 'amount']])")], ["fetch_data_schema", "analyze_transactions"],
         ),
         ("transaction_count_may", "hardened"): (
             f"You made {gt['may_transaction_count']} transactions in May (income and expenses both counted).\n\nFINAL ANSWER: {gt['may_transaction_count']}",
-            [_CODE_OK("may = df[df['date'].dt.month == 5]\nprint(len(may))")], ["fetch_data_schema", "execute_python_code"],
+            [_CODE_OK("may = df[df['date'].dt.month == 5]\nprint(len(may))")], ["fetch_data_schema", "analyze_transactions"],
         ),
         ("transaction_count_may", "creative"): (
             f"May was busy busy - {gt['may_transaction_count']} transactions, you absolute machine!\n\nFINAL ANSWER: {gt['may_transaction_count']}",
-            [_CODE_OK("may = df[df['date'].dt.month == 5]\nprint(len(may))")], ["fetch_data_schema", "execute_python_code"],
+            [_CODE_OK("may = df[df['date'].dt.month == 5]\nprint(len(may))")], ["fetch_data_schema", "analyze_transactions"],
         ),
         ("advisory_budget_5030_20", "hardened"): (
             f"On your monthly income of ${gt['monthly_income']:,.0f}, the 50/30/20 targets are ${0.5 * gt['monthly_income']:,.0f} needs / ${0.3 * gt['monthly_income']:,.0f} wants / ${0.2 * gt['monthly_income']:,.0f} savings. Your average monthly spending is ${gt['avg_monthly_expenses']:,.2f}, so you are well over the needs-and-wants envelope. Trim dining out and shopping first, and automate a ${0.2 * gt['monthly_income']:,.0f} savings transfer on payday.",
             [_CODE_OK("sp = df[df['amount'] < 0].copy()\nsp['spend'] = -sp['amount']\nprint(sp.groupby('category')['spend'].sum().sort_values(ascending=False).head(5))")],
-            ["financial_rules_lookup", "fetch_data_schema", "execute_python_code"],
+            ["financial_rules_lookup", "fetch_data_schema", "analyze_transactions"],
         ),
         ("advisory_budget_5030_20", "creative"): (
             f"Okay, real talk with love: on ${gt['monthly_income']:,.0f} a month, 50/30/20 says ${0.5 * gt['monthly_income']:,.0f} needs, ${0.3 * gt['monthly_income']:,.0f} wants, ${0.2 * gt['monthly_income']:,.0f} savings. You're spending about ${gt['avg_monthly_expenses']:,.2f} a month, so the wants envelope is bursting at the seams - the lattes and late-night shopping are adorable but expensive. Automate the ${0.2 * gt['monthly_income']:,.0f} savings transfer first, then gently rein in dining and shopping!",
             [_CODE_OK("sp = df[df['amount'] < 0].copy()\nsp['spend'] = -sp['amount']\nprint(sp.groupby('category')['spend'].sum().sort_values(ascending=False).head(5))")],
-            ["financial_rules_lookup", "execute_python_code"],
+            ["financial_rules_lookup", "analyze_transactions"],
         ),
         ("advisory_emergency_fund", "hardened"): (
             f"No. Your savings total ${gt['savings_total']:,.2f}, while a 3-month fund needs ${gt['emergency_fund_target']:,.2f} (3 x ${gt['avg_monthly_expenses']:,.2f} average monthly expenses). The gap is roughly ${gt['emergency_fund_target'] - gt['savings_total']:,.2f}. Priority one: automatic monthly transfers into savings until the fund is complete.",
             [_CODE_OK("sav = df[df['account_type'] == 'Savings']['amount'].sum()\nsp = df[df['amount'] < 0]['amount'].abs()\nmonthly = sp.groupby(df['date'].dt.month).sum().mean()\nprint(round(sav, 2), round(3 * monthly, 2))")],
-            ["financial_rules_lookup", "execute_python_code"],
+            ["financial_rules_lookup", "analyze_transactions"],
         ),
         ("advisory_emergency_fund", "hardened_fallback"): (
             f"No. Savings ${gt['savings_total']:,.2f} vs target ${gt['emergency_fund_target']:,.2f}.",
@@ -788,6 +816,7 @@ def mock_agent(query, system_prompt=NAIVE_SYSTEM_PROMPT, temperature=0.0, model=
 
 
 def mock_judge(case, result):
+    """Return a deterministic stand-in for the live judge."""
     style = _mock_style(result["system_prompt"])
     rubric = case.get("judge_rubric") or ["quality: overall answer quality (1-5)"]
     dims = [line.split(":")[0].strip() for line in rubric]

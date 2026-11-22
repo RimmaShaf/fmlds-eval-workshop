@@ -7,17 +7,18 @@
     "2026-10-31"
   ],
   "ground_truth": {
-    "oct_expenses": 15961.34,
-    "starbucks": 1842.81,
+    "oct_expenses": 16033.87,
+    "net_oct_expenses_after_refunds": 16003.88,
+    "starbucks": 1845.73,
     "total_income": 33282.26,
     "top_category": "Shopping & Retail",
-    "top_category_value": 33635.43,
-    "avg_monthly_expenses": 16540.92,
+    "top_category_value": 32742.13,
+    "avg_monthly_expenses": 16376.45,
     "largest_expense_value": 1450.0,
     "largest_expense_merchant": "SAKURA HEIGHTS APT 4B RENT",
     "may_transaction_count": 417,
-    "savings_total": 2521.68,
-    "emergency_fund_target": 49622.76,
+    "savings_total": 2525.43,
+    "emergency_fund_target": 49129.35,
     "monthly_income": 5200.0
   },
   "cases": [
@@ -27,10 +28,21 @@
       "type": "numeric",
       "trap": "polarity",
       "expected": {
-        "value": 15961.34
+        "value": 16033.87
       },
       "tolerance": 0.01,
       "ground_truth_logic": "df[(df.date.dt.month == 10) & (df.amount < 0)].amount.sum(), reported as a positive magnitude"
+    },
+    {
+      "id": "net_expenses_october_after_refunds",
+      "query": "What were my net expenses in October after transaction refunds, excluding income?",
+      "type": "numeric",
+      "trap": "refund_polarity",
+      "expected": {
+        "value": 16003.88
+      },
+      "tolerance": 0.01,
+      "ground_truth_logic": "October expense magnitudes minus positive transaction refunds; exclude positive income"
     },
     {
       "id": "starbucks_total",
@@ -38,10 +50,10 @@
       "type": "numeric",
       "trap": "fragmentation",
       "expected": {
-        "value": 1842.81
+        "value": 1845.73
       },
       "tolerance": 0.01,
-      "ground_truth_logic": "rows where raw_description contains 'STARBUCKS' (case-insensitive) and amount < 0, spend magnitudes summed"
+      "ground_truth_logic": "rows where raw_description contains STARBUCKS or SBUX (case-insensitive) and amount < 0, spend magnitudes summed"
     },
     {
       "id": "merchant_location",
@@ -75,7 +87,7 @@
       "type": "numeric",
       "trap": null,
       "expected": {
-        "value": 33635.43,
+        "value": 32742.13,
         "category": "Shopping & Retail"
       },
       "tolerance": 0.01,
@@ -87,7 +99,7 @@
       "type": "numeric",
       "trap": null,
       "expected": {
-        "value": 16540.92
+        "value": 16376.45
       },
       "tolerance": 0.01,
       "ground_truth_logic": "mean over the 6 months of each month's total expense magnitude (amount < 0)"
@@ -123,7 +135,7 @@
       "expected": {
         "anchors": {
           "monthly_income": 5200.0,
-          "avg_monthly_expenses": 16540.92,
+          "avg_monthly_expenses": 16376.45,
           "needs_target": 2600.0,
           "wants_target": 1560.0,
           "savings_target": 1040.0
@@ -143,9 +155,9 @@
       "trap": null,
       "expected": {
         "anchors": {
-          "savings_total": 2521.68,
-          "avg_monthly_expenses": 16540.92,
-          "emergency_fund_target": 49622.76,
+          "savings_total": 2525.43,
+          "avg_monthly_expenses": 16376.45,
+          "emergency_fund_target": 49129.35,
           "verdict": "no - savings are far below the 3-month target"
         }
       },

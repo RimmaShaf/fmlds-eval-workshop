@@ -448,10 +448,10 @@ secret and do the live pass.
 - [ ] **Notebook 3 (15 min, live):** bootstrap → baseline suite (expect the 15
       RPM seat cap to pace it to ~5 min — that's the realistic participant
       experience; for a faster rehearsal use a `--rpm 60` pilot key) →
-      baseline ≈ 9/10 (live variance: 8–10 is normal, judges are stochastic —
+      baseline ≈ 10/11 (live variance: 9–11 is normal, judges are stochastic —
       if it dips below the 0.9 gate, re-run once before debugging) →
-      regression 6/10-ish → diff cell prints `REGRESSION DETECTED` →
-      `router_ok` column shows the mis-routing → optional: beat-9/10
+      regression 6/11-ish → diff cell prints `REGRESSION DETECTED` →
+      `router_ok` column shows the mis-routing → optional: beat-11/11
 
 **If something breaks, likely causes:**
 | Symptom | Fix |

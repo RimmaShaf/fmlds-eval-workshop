@@ -435,9 +435,8 @@ secret and do the live pass.
 
 - [ ] **Notebook 1 (10 min, live):** open via the README badge → config cell
       prints `mode=gateway` → deps auto-install → health check OK → data loads
-      **508 rows from the raw GitHub URL** → trap demos behave: polarity
-      (~$8k vs true $4,358.70), Starbucks ($0.00), location (KeyError +
-      fabricated answer) → verdicts print `SILENT FAILURE`
+      **2,500 rows from the raw GitHub URL** → compare the agent's answers with
+      the signed-amount, fragmented-merchant, and missing-location examples.
 - [ ] **Notebook 2 (10 min, live):** bootstrap fetches `utils.py` from the repo
       → `%pip` installs phoenix 22.0.0 cleanly → `launch_app()` prints a
       **Colab-proxied URL** (not localhost) → click it: empty project

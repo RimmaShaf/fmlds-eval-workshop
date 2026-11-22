@@ -67,13 +67,14 @@ DAILY_MERCHANTS = {
     ],
 }
 
-DAILY_COUNTS = {
-    "Food & Dining": 26,
-    "Transportation": 16,
-    "Shopping & Retail": 14,
-    "Entertainment & Recreation": 8,
-    "Healthcare & Medical": 3,
-    "Financial Services": 5,
+# 404 variable transactions per month, plus recurring charges and one-offs: 2,500 total.
+MONTHLY_COUNTS = {
+    "Food & Dining": 146,
+    "Transportation": 90,
+    "Shopping & Retail": 78,
+    "Entertainment & Recreation": 45,
+    "Healthcare & Medical": 17,
+    "Financial Services": 28,
 }
 
 MONTHLY_RECURRING = [
@@ -147,7 +148,7 @@ def build_rows() -> list[dict]:
             add(date(year, month, day), desc, category, account, round(rng.uniform(lo, hi), 2))
 
         for category, merchants in DAILY_MERCHANTS.items():
-            for _ in range(DAILY_COUNTS[category]):
+            for _ in range(MONTHLY_COUNTS[category]):
                 desc, account, lo, hi = rng.choice(merchants)
                 day = rng.randint(1, dim)
                 add(date(year, month, day), desc, category, account, -round(rng.uniform(lo, hi), 2))

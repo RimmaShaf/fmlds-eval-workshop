@@ -27,6 +27,7 @@ CONFIGS = {
 
 
 def main() -> int:
+    """Run the deterministic mock suite or the live workshop evaluation."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--mode", default=os.getenv("WORKSHOP_MODE", "mock"), choices=["mock", "gateway"])
     parser.add_argument("--config", default="baseline", choices=list(CONFIGS))
@@ -36,6 +37,8 @@ def main() -> int:
     args = parser.parse_args()
 
     os.environ["WORKSHOP_MODE"] = args.mode
+    if args.mode == "mock":
+        os.environ.setdefault("WORKSHOP_DATA_URL", (ROOT / "data" / "transactions.csv").as_uri())
     sys.path.insert(0, str(ROOT))
     import utils
 

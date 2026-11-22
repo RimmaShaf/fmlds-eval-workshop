@@ -29,7 +29,7 @@
 02_tracing_with_phoenix.ipynb  notebook 2: event logs -> local Phoenix -> Mind Reader -> publish to board
 03_evaluations.ipynb           notebook 3: golden suite, router checks, regression gate, beat-9/10, CI
 utils.py                       canonical agent + eval harness (GENERATED; imported by notebooks 2-3 and CI)
-data/transactions.csv           synthetic ledger, 508 rows, May–Oct 2026 (seed 42)
+data/transactions.csv           synthetic ledger, 2,500 rows, May–Oct 2026 (seed 42)
 data/golden_eval_cases.json     10 golden cases + frozen ground truth
 scripts/generate_dataset.py     regenerates data + ground truth deterministically
 scripts/build_notebooks.py      regenerates utils.py + all three notebooks (edit here, not the artifacts)

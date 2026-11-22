@@ -1,23 +1,23 @@
 {
   "seed": 42,
   "dataset": "data/transactions.csv",
-  "n_rows": 508,
+  "n_rows": 2500,
   "date_range": [
     "2026-05-01",
     "2026-10-31"
   ],
   "ground_truth": {
-    "oct_expenses": 4358.7,
-    "starbucks": 259.62,
+    "oct_expenses": 15961.34,
+    "starbucks": 1842.81,
     "total_income": 33282.26,
-    "top_category": "Housing",
-    "top_category_value": 8700.0,
-    "avg_monthly_expenses": 4483.87,
+    "top_category": "Shopping & Retail",
+    "top_category_value": 33635.43,
+    "avg_monthly_expenses": 16540.92,
     "largest_expense_value": 1450.0,
     "largest_expense_merchant": "SAKURA HEIGHTS APT 4B RENT",
-    "may_transaction_count": 85,
-    "savings_total": 2526.52,
-    "emergency_fund_target": 13451.61,
+    "may_transaction_count": 417,
+    "savings_total": 2521.68,
+    "emergency_fund_target": 49622.76,
     "monthly_income": 5200.0
   },
   "cases": [
@@ -27,7 +27,7 @@
       "type": "numeric",
       "trap": "polarity",
       "expected": {
-        "value": 4358.7
+        "value": 15961.34
       },
       "tolerance": 0.01,
       "ground_truth_logic": "df[(df.date.dt.month == 10) & (df.amount < 0)].amount.sum(), reported as a positive magnitude"
@@ -38,7 +38,7 @@
       "type": "numeric",
       "trap": "fragmentation",
       "expected": {
-        "value": 259.62
+        "value": 1842.81
       },
       "tolerance": 0.01,
       "ground_truth_logic": "rows where raw_description contains 'STARBUCKS' (case-insensitive) and amount < 0, spend magnitudes summed"
@@ -75,8 +75,8 @@
       "type": "numeric",
       "trap": null,
       "expected": {
-        "value": 8700.0,
-        "category": "Housing"
+        "value": 33635.43,
+        "category": "Shopping & Retail"
       },
       "tolerance": 0.01,
       "ground_truth_logic": "expenses grouped by category, highest total spend magnitude wins"
@@ -87,7 +87,7 @@
       "type": "numeric",
       "trap": null,
       "expected": {
-        "value": 4483.87
+        "value": 16540.92
       },
       "tolerance": 0.01,
       "ground_truth_logic": "mean over the 6 months of each month's total expense magnitude (amount < 0)"
@@ -110,7 +110,7 @@
       "type": "numeric",
       "trap": null,
       "expected": {
-        "value": 85
+        "value": 417
       },
       "tolerance": 0.0,
       "ground_truth_logic": "count of rows where date.dt.month == 5 (income and expenses both count)"
@@ -123,7 +123,7 @@
       "expected": {
         "anchors": {
           "monthly_income": 5200.0,
-          "avg_monthly_expenses": 4483.87,
+          "avg_monthly_expenses": 16540.92,
           "needs_target": 2600.0,
           "wants_target": 1560.0,
           "savings_target": 1040.0
@@ -143,9 +143,9 @@
       "trap": null,
       "expected": {
         "anchors": {
-          "savings_total": 2526.52,
-          "avg_monthly_expenses": 4483.87,
-          "emergency_fund_target": 13451.61,
+          "savings_total": 2521.68,
+          "avg_monthly_expenses": 16540.92,
+          "emergency_fund_target": 49622.76,
           "verdict": "no - savings are far below the 3-month target"
         }
       },
